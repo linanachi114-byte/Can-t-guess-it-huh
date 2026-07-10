@@ -2,10 +2,16 @@ const state = {
   game: null,
   wordbank: {},
   mode: "ask",
-  selectedCategories: new Set()
+  view: "game",
+  selectedCategories: new Set(),
+  activeCategory: null
 };
 
 const els = {
+  gameNavBtn: document.querySelector("#gameNavBtn"),
+  libraryNavBtn: document.querySelector("#libraryNavBtn"),
+  gameView: document.querySelector("#gameView"),
+  libraryView: document.querySelector("#libraryView"),
   categoryLabel: document.querySelector("#categoryLabel"),
   questionCount: document.querySelector("#questionCount"),
   guessCount: document.querySelector("#guessCount"),
@@ -15,20 +21,31 @@ const els = {
   winBanner: document.querySelector("#winBanner"),
   bannerTitle: document.querySelector("#bannerTitle"),
   revealedWord: document.querySelector("#revealedWord"),
+  hintBanner: document.querySelector("#hintBanner"),
+  hintText: document.querySelector("#hintText"),
   roundSummary: document.querySelector("#roundSummary"),
   askModeBtn: document.querySelector("#askModeBtn"),
   guessModeBtn: document.querySelector("#guessModeBtn"),
   playForm: document.querySelector("#playForm"),
   mainInput: document.querySelector("#mainInput"),
   submitBtn: document.querySelector("#submitBtn"),
+  clueBtn: document.querySelector("#clueBtn"),
   revealBtn: document.querySelector("#revealBtn"),
   newGameBtn: document.querySelector("#newGameBtn"),
+  openLibraryBtn: document.querySelector("#openLibraryBtn"),
   categoryList: document.querySelector("#categoryList"),
-  categoryOptions: document.querySelector("#categoryOptions"),
-  wordForm: document.querySelector("#wordForm"),
-  categoryInput: document.querySelector("#categoryInput"),
-  wordInput: document.querySelector("#wordInput"),
-  wordMessage: document.querySelector("#wordMessage")
+  categoryForm: document.querySelector("#categoryForm"),
+  newCategoryInput: document.querySelector("#newCategoryInput"),
+  libraryCards: document.querySelector("#libraryCards"),
+  libraryEditor: document.querySelector("#libraryEditor"),
+  editorTitle: document.querySelector("#editorTitle"),
+  editorMeta: document.querySelector("#editorMeta"),
+  closeEditorBtn: document.querySelector("#closeEditorBtn"),
+  entryForm: document.querySelector("#entryForm"),
+  entryWordInput: document.querySelector("#entryWordInput"),
+  entryHintInput: document.querySelector("#entryHintInput"),
+  libraryMessage: document.querySelector("#libraryMessage"),
+  entryList: document.querySelector("#entryList")
 };
 
 async function api(path, options = {}) {
@@ -46,15 +63,20 @@ function setMessage(text, isError = false) {
   els.message.classList.toggle("error", isError);
 }
 
-function setWordMessage(text, isError = false) {
-  els.wordMessage.textContent = text;
-  els.wordMessage.classList.toggle("error", isError);
+function setLibraryMessage(text, isError = false) {
+  els.libraryMessage.textContent = text;
+  els.libraryMessage.classList.toggle("error", isError);
+}
+
+function isGameOver() {
+  return Boolean(state.game?.isWon || state.game?.isRevealed);
 }
 
 function setLoading(isLoading) {
-  const isOver = Boolean(state.game?.isWon || state.game?.isRevealed);
+  const isOver = isGameOver();
   els.submitBtn.disabled = isLoading || isOver;
   els.revealBtn.disabled = isLoading || isOver;
+  els.clueBtn.disabled = isLoading || isOver || Boolean(state.game?.isHintShown);
   els.newGameBtn.disabled = isLoading;
   els.submitBtn.textContent = isLoading ? "等待中" : "提交";
 }
@@ -65,6 +87,15 @@ function setMode(mode) {
   els.guessModeBtn.classList.toggle("active", mode === "guess");
   els.mainInput.placeholder = mode === "ask" ? "例如：它是人工制品吗？" : "输入你的最终答案";
   els.mainInput.focus();
+}
+
+function setView(view) {
+  state.view = view;
+  els.gameNavBtn.classList.toggle("active", view === "game");
+  els.libraryNavBtn.classList.toggle("active", view === "library");
+  els.gameView.classList.toggle("hidden", view !== "game");
+  els.libraryView.classList.toggle("hidden", view !== "library");
+  if (view === "library") renderLibrary();
 }
 
 function formatTime(iso) {
@@ -80,7 +111,8 @@ function renderGame() {
   const history = game?.history || [];
   const questionTotal = history.filter((item) => item.type === "question").length;
   const guessTotal = history.filter((item) => item.type === "guess").length;
-  const isOver = Boolean(game?.isWon || game?.isRevealed);
+  const isOver = isGameOver();
+
   els.categoryLabel.textContent = game ? game.category : "未开始";
   els.questionCount.textContent = questionTotal;
   els.guessCount.textContent = guessTotal;
@@ -88,24 +120,41 @@ function renderGame() {
   els.historyList.innerHTML = "";
   els.emptyHistory.classList.toggle("hidden", history.length > 0);
 
+  els.hintBanner.classList.toggle("hidden", !game?.revealedHint);
+  els.hintText.textContent = game?.revealedHint || "";
   els.winBanner.classList.toggle("hidden", !isOver);
   els.bannerTitle.textContent = game?.isWon ? "答案正确" : "已公布答案";
   els.revealedWord.textContent = game?.revealedWord || "";
   els.mainInput.disabled = isOver;
   els.submitBtn.disabled = isOver;
   els.revealBtn.disabled = isOver;
+  els.clueBtn.disabled = isOver || Boolean(game?.isHintShown);
 
   [...history].reverse().forEach((item, index) => {
     const originalIndex = history.length - index;
     const li = document.createElement("li");
     li.className = "history-item";
+
     const meta = document.createElement("div");
     meta.className = "history-meta";
-    const typeLabel = item.type === "question" ? "提问" : item.type === "guess" ? "猜答案" : "公布答案";
-    meta.innerHTML = `<span>#${originalIndex} ${typeLabel}</span><span>${formatTime(item.at)}</span>`;
+    const typeLabel = item.type === "question"
+      ? "提问"
+      : item.type === "guess"
+        ? "猜答案"
+        : item.type === "hint"
+          ? "查看线索"
+          : "公布答案";
+
+    const number = document.createElement("span");
+    number.textContent = `#${originalIndex} ${typeLabel}`;
+    const time = document.createElement("span");
+    time.textContent = formatTime(item.at);
+    meta.append(number, time);
+
     const text = document.createElement("p");
     text.className = "history-text";
     text.textContent = item.text;
+
     const answer = document.createElement("span");
     answer.className = "answer";
     if (item.type === "question") {
@@ -113,6 +162,9 @@ function renderGame() {
     } else if (item.type === "guess") {
       answer.textContent = item.correct ? "答案正确" : "答案错误";
       answer.classList.add(item.correct ? "correct" : "wrong");
+    } else if (item.type === "hint") {
+      answer.textContent = `线索：${item.answer}`;
+      answer.classList.add("hint");
     } else {
       answer.textContent = `正解：${item.answer}`;
       answer.classList.add("reveal");
@@ -122,46 +174,122 @@ function renderGame() {
   });
 }
 
-function renderWordbank() {
-  els.categoryList.innerHTML = "";
-  els.categoryOptions.innerHTML = "";
+function renderCategoryPicker() {
+  const categories = Object.keys(state.wordbank);
+  const validCategories = new Set(categories);
+  state.selectedCategories.forEach((category) => {
+    if (!validCategories.has(category)) state.selectedCategories.delete(category);
+  });
   if (state.selectedCategories.size === 0) {
-    Object.keys(state.wordbank).forEach((category) => state.selectedCategories.add(category));
+    categories.forEach((category) => state.selectedCategories.add(category));
   }
-  Object.entries(state.wordbank).forEach(([category, words]) => {
-    const option = document.createElement("option");
-    option.value = category;
-    els.categoryOptions.append(option);
 
+  els.categoryList.innerHTML = "";
+  categories.forEach((category) => {
+    const entries = state.wordbank[category] || [];
     const label = document.createElement("label");
     label.className = "category-row";
-    label.innerHTML = `
-      <input type="checkbox" ${state.selectedCategories.has(category) ? "checked" : ""} value="${escapeHtml(category)}">
-      <span>${escapeHtml(category)}</span>
-      <small>${words.length} 个</small>
-    `;
-    const checkbox = label.querySelector("input");
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = state.selectedCategories.has(category);
     checkbox.addEventListener("change", () => {
       if (checkbox.checked) state.selectedCategories.add(category);
       else state.selectedCategories.delete(category);
     });
+
+    const name = document.createElement("span");
+    name.textContent = category;
+    const count = document.createElement("small");
+    count.textContent = `${entries.length} 个`;
+    label.append(checkbox, name, count);
     els.categoryList.append(label);
   });
 }
 
-function escapeHtml(text) {
-  return String(text).replace(/[&<>"']/g, (char) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  })[char]);
+function renderLibrary() {
+  renderLibraryCards();
+  if (state.activeCategory && state.wordbank[state.activeCategory]) {
+    renderEditor(state.activeCategory);
+  } else {
+    state.activeCategory = null;
+    els.libraryEditor.classList.add("hidden");
+  }
+}
+
+function renderLibraryCards() {
+  els.libraryCards.innerHTML = "";
+  Object.entries(state.wordbank).forEach(([category, entries]) => {
+    const hinted = entries.filter((entry) => entry.hint).length;
+    const card = document.createElement("button");
+    card.className = "library-card";
+    card.type = "button";
+    card.addEventListener("click", () => {
+      state.activeCategory = category;
+      renderEditor(category);
+    });
+
+    const title = document.createElement("strong");
+    title.textContent = category;
+    const meta = document.createElement("span");
+    meta.textContent = `${entries.length} 个词条 · ${hinted} 条线索`;
+    const sample = document.createElement("small");
+    sample.textContent = entries.slice(0, 3).map((entry) => entry.word).join("、") || "空题库";
+    card.append(title, meta, sample);
+    els.libraryCards.append(card);
+  });
+}
+
+function renderEditor(category) {
+  const entries = state.wordbank[category] || [];
+  els.libraryEditor.classList.remove("hidden");
+  els.editorTitle.textContent = category;
+  els.editorMeta.textContent = `${entries.length} 个词条。线索可以手写，也可以让 AI 重新生成。`;
+  els.entryList.innerHTML = "";
+
+  entries.forEach((entry, index) => {
+    const row = document.createElement("article");
+    row.className = "entry-row";
+
+    const wordInput = document.createElement("input");
+    wordInput.value = entry.word;
+    wordInput.placeholder = "词条";
+
+    const hintInput = document.createElement("input");
+    hintInput.value = entry.hint || "";
+    hintInput.placeholder = "线索";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.textContent = "保存";
+    saveBtn.addEventListener("click", () => saveEntry(category, index, wordInput.value, hintInput.value));
+
+    const generateBtn = document.createElement("button");
+    generateBtn.type = "button";
+    generateBtn.className = "secondary-button";
+    generateBtn.textContent = "AI 线索";
+    generateBtn.addEventListener("click", () => regenerateHint(category, wordInput.value, hintInput, generateBtn));
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "danger-button compact";
+    deleteBtn.textContent = "删除";
+    deleteBtn.addEventListener("click", () => deleteEntry(category, index));
+
+    row.append(wordInput, hintInput, saveBtn, generateBtn, deleteBtn);
+    els.entryList.append(row);
+  });
 }
 
 async function loadWordbank() {
   state.wordbank = await api("/api/wordbank");
-  renderWordbank();
+  renderCategoryPicker();
+}
+
+async function refreshWordbank(bank) {
+  state.wordbank = bank || await api("/api/wordbank");
+  renderCategoryPicker();
+  renderLibrary();
 }
 
 async function newGame() {
@@ -207,6 +335,26 @@ async function submitTurn(event) {
   }
 }
 
+async function showClue() {
+  if (!state.game) await newGame();
+  setLoading(true);
+  setMessage("正在取出线索...");
+
+  try {
+    state.game = await api("/api/clue", {
+      method: "POST",
+      body: JSON.stringify({ gameId: state.game.id })
+    });
+    localStorage.setItem("guess-word-game-id", state.game.id);
+    setMessage(`线索：${state.game.revealedHint}`);
+    renderGame();
+  } catch (error) {
+    setMessage(error.message, true);
+  } finally {
+    setLoading(false);
+  }
+}
+
 async function revealAnswer() {
   if (!state.game) await newGame();
   setLoading(true);
@@ -227,36 +375,113 @@ async function revealAnswer() {
   }
 }
 
-async function addWord(event) {
+async function createCategory(event) {
   event.preventDefault();
-  const category = els.categoryInput.value.trim();
-  const word = els.wordInput.value.trim();
-  if (!category || !word) {
-    setWordMessage("词库名和词条都要填。", true);
-    return;
-  }
+  const category = els.newCategoryInput.value.trim();
+  if (!category) return;
 
-  const button = els.wordForm.querySelector("button");
-  button.disabled = true;
   try {
-    state.wordbank = await api("/api/wordbank", {
+    const bank = await api("/api/wordbank/category", {
       method: "POST",
-      body: JSON.stringify({ category, word })
+      body: JSON.stringify({ category })
     });
+    els.newCategoryInput.value = "";
     state.selectedCategories.add(category);
-    els.wordInput.value = "";
-    setWordMessage(`已添加：${word}`);
-    renderWordbank();
+    state.activeCategory = category;
+    await refreshWordbank(bank);
+    setLibraryMessage(`已新建题库：${category}`);
   } catch (error) {
-    setWordMessage(error.message, true);
-  } finally {
-    button.disabled = false;
+    setLibraryMessage(error.message, true);
   }
 }
 
+async function addEntry(event) {
+  event.preventDefault();
+  if (!state.activeCategory) return;
+  const word = els.entryWordInput.value.trim();
+  const hint = els.entryHintInput.value.trim();
+  if (!word) {
+    setLibraryMessage("词条不能为空。", true);
+    return;
+  }
+
+  const button = els.entryForm.querySelector("button");
+  button.disabled = true;
+  button.textContent = hint ? "添加中" : "生成线索中";
+  try {
+    const bank = await api("/api/wordbank/entry", {
+      method: "POST",
+      body: JSON.stringify({ category: state.activeCategory, word, hint })
+    });
+    els.entryWordInput.value = "";
+    els.entryHintInput.value = "";
+    await refreshWordbank(bank);
+    setLibraryMessage(`已添加：${word}`);
+  } catch (error) {
+    setLibraryMessage(error.message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = "添加词条";
+  }
+}
+
+async function saveEntry(category, index, word, hint) {
+  try {
+    const bank = await api("/api/wordbank/entry", {
+      method: "PUT",
+      body: JSON.stringify({ category, index, word, hint })
+    });
+    await refreshWordbank(bank);
+    setLibraryMessage("已保存。");
+  } catch (error) {
+    setLibraryMessage(error.message, true);
+  }
+}
+
+async function deleteEntry(category, index) {
+  try {
+    const bank = await api("/api/wordbank/entry", {
+      method: "DELETE",
+      body: JSON.stringify({ category, index })
+    });
+    await refreshWordbank(bank);
+    setLibraryMessage("已删除词条。");
+  } catch (error) {
+    setLibraryMessage(error.message, true);
+  }
+}
+
+async function regenerateHint(category, word, hintInput, button) {
+  const cleanedWord = word.trim();
+  if (!cleanedWord) {
+    setLibraryMessage("请先填写词条。", true);
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "生成中";
+  try {
+    const data = await api("/api/hint", {
+      method: "POST",
+      body: JSON.stringify({ category, word: cleanedWord })
+    });
+    hintInput.value = data.hint;
+    setLibraryMessage("AI 已生成线索，记得保存。");
+  } catch (error) {
+    setLibraryMessage(error.message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = "AI 线索";
+  }
+}
+
+els.gameNavBtn.addEventListener("click", () => setView("game"));
+els.libraryNavBtn.addEventListener("click", () => setView("library"));
+els.openLibraryBtn.addEventListener("click", () => setView("library"));
 els.askModeBtn.addEventListener("click", () => setMode("ask"));
 els.guessModeBtn.addEventListener("click", () => setMode("guess"));
 els.playForm.addEventListener("submit", submitTurn);
+els.clueBtn.addEventListener("click", showClue);
 els.revealBtn.addEventListener("click", revealAnswer);
 els.newGameBtn.addEventListener("click", async () => {
   try {
@@ -265,9 +490,16 @@ els.newGameBtn.addEventListener("click", async () => {
     setMessage(error.message, true);
   }
 });
-els.wordForm.addEventListener("submit", addWord);
+els.categoryForm.addEventListener("submit", createCategory);
+els.entryForm.addEventListener("submit", addEntry);
+els.closeEditorBtn.addEventListener("click", () => {
+  state.activeCategory = null;
+  els.libraryEditor.classList.add("hidden");
+});
 
 await loadWordbank();
+renderLibrary();
+
 try {
   const gameId = localStorage.getItem("guess-word-game-id");
   if (gameId) {

@@ -40,6 +40,36 @@ async function writeJson(filePath, value) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
+async function readWordBank() {
+  return normalizeWordBank(await readJson(WORD_BANK_PATH));
+}
+
+async function writeWordBank(bank) {
+  await writeJson(WORD_BANK_PATH, normalizeWordBank(bank));
+}
+
+function normalizeWordBank(rawBank) {
+  const bank = {};
+  for (const [category, entries] of Object.entries(rawBank || {})) {
+    if (!Array.isArray(entries)) {
+      bank[category] = [];
+      continue;
+    }
+    bank[category] = entries
+      .map((entry) => {
+        if (typeof entry === "string") {
+          return { word: entry.trim(), hint: "" };
+        }
+        return {
+          word: String(entry?.word || "").trim(),
+          hint: String(entry?.hint || "").trim()
+        };
+      })
+      .filter((entry) => entry.word);
+  }
+  return bank;
+}
+
 function sendJson(res, status, data) {
   const body = JSON.stringify(data);
   res.writeHead(status, {
@@ -58,7 +88,7 @@ async function parseBody(req) {
   let body = "";
   for await (const chunk of req) {
     body += chunk;
-    if (body.length > 1024 * 1024) throw new Error("请求体太大");
+    if (body.length > 1024 * 1024) throw new Error("请求体太大。");
   }
   return body ? JSON.parse(body) : {};
 }
@@ -76,6 +106,8 @@ function publicGame(game) {
     startedAt: game.startedAt,
     isWon: game.isWon,
     isRevealed: Boolean(game.isRevealed),
+    isHintShown: Boolean(game.isHintShown),
+    revealedHint: game.isHintShown || game.isWon || game.isRevealed ? game.hint : null,
     revealedWord: game.isWon || game.isRevealed ? game.word : null,
     history: game.history
   };
@@ -86,27 +118,35 @@ function pickRandom(items) {
 }
 
 async function startGame(categories) {
-  const bank = await readJson(WORD_BANK_PATH);
+  const bank = await readWordBank();
   let selectedCategories = Array.isArray(categories) && categories.length
     ? categories.filter((name) => Array.isArray(bank[name]) && bank[name].length)
-    : Object.keys(bank);
-  if (!selectedCategories.length) selectedCategories = Object.keys(bank);
+    : Object.keys(bank).filter((name) => bank[name].length);
+  if (!selectedCategories.length) {
+    selectedCategories = Object.keys(bank).filter((name) => bank[name].length);
+  }
+  if (!selectedCategories.length) {
+    throw new Error("当前没有可用词条，请先在题库中添加词。");
+  }
+
   const category = pickRandom(selectedCategories);
-  const word = pickRandom(bank[category]);
+  const entry = pickRandom(bank[category]);
   const game = {
     id: crypto.randomUUID(),
-    word,
+    word: entry.word,
+    hint: entry.hint,
     category,
     startedAt: new Date().toISOString(),
     isWon: false,
     isRevealed: false,
+    isHintShown: false,
     history: []
   };
   games.set(game.id, game);
   return publicGame(game);
 }
 
-async function askDeepSeek(messages, maxTokens = 32) {
+async function askDeepSeek(messages, maxTokens = 80) {
   if (!API_KEY) {
     throw new Error("缺少 DEEPSEEK_API_KEY，请在 .env 中填写。");
   }
@@ -155,6 +195,7 @@ async function answerQuestion(game, question) {
     .slice(-12)
     .map((item) => {
       if (item.type === "question") return `玩家问：${item.text}\nAI答：${item.answer}`;
+      if (item.type === "hint") return `玩家查看线索：${item.answer}`;
       return `玩家猜：${item.text}\n结果：${item.correct ? "正确" : "错误"}`;
     })
     .join("\n");
@@ -167,7 +208,7 @@ async function answerQuestion(game, question) {
     },
     {
       role: "user",
-      content: `隐藏答案：${game.word}\n所属词库：${game.category}\n最近历史：\n${compactHistory || "暂无"}\n\n玩家问题：${question}\n请只输出：是、否、是也不是。`
+      content: `隐藏答案：${game.word}\n所属题库：${game.category}\n已经公布的线索：${game.isHintShown ? game.hint : "暂无"}\n最近历史：\n${compactHistory || "暂无"}\n\n玩家问题：${question}\n请只输出：是、否、是也不是。`
     }
   ]);
 
@@ -183,9 +224,9 @@ async function judgeGuess(game, guess) {
     },
     {
       role: "user",
-      content: `隐藏答案：${game.word}\n所属词库：${game.category}\n玩家答案：${guess}\n输出格式：{"correct":true} 或 {"correct":false}`
+      content: `隐藏答案：${game.word}\n所属题库：${game.category}\n玩家答案：${guess}\n输出格式：{"correct":true} 或 {"correct":false}`
     }
-  ], 40);
+  ], 120);
 
   try {
     const match = content.match(/\{[\s\S]*\}/);
@@ -194,6 +235,35 @@ async function judgeGuess(game, guess) {
   } catch {
     return normalizeAnswer(game.word) === normalizeAnswer(guess);
   }
+}
+
+async function generateHint(word, category) {
+  const content = await askDeepSeek([
+    {
+      role: "system",
+      content:
+        "你要为中文猜词游戏生成一条线索。线索要能明显缩小范围，但不能直接说出答案，不能包含答案中的完整词语或明显同义替换。输出一句中文，20到35个字，不要解释。"
+    },
+    {
+      role: "user",
+      content: `题库：${category}\n目标词：${word}\n请生成一条线索。`
+    }
+  ], 120);
+  return content.replace(/^["“”']|["“”']$/g, "").trim();
+}
+
+function requireCategoryName(category) {
+  const name = String(category || "").trim();
+  if (!name) throw new Error("题库名不能为空。");
+  return name;
+}
+
+function requireEntryIndex(index, entries) {
+  const numeric = Number(index);
+  if (!Number.isInteger(numeric) || numeric < 0 || numeric >= entries.length) {
+    throw new Error("词条不存在。");
+  }
+  return numeric;
 }
 
 async function serveStatic(req, res) {
@@ -231,23 +301,89 @@ async function handleApi(req, res) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/wordbank") {
-    sendJson(res, 200, await readJson(WORD_BANK_PATH));
+    sendJson(res, 200, await readWordBank());
     return;
   }
 
-  if (req.method === "POST" && url.pathname === "/api/wordbank") {
+  if (req.method === "POST" && url.pathname === "/api/wordbank/category") {
     const body = await parseBody(req);
-    const category = String(body.category || "").trim();
-    const word = String(body.word || "").trim();
-    if (!category || !word) {
-      sendJson(res, 400, { error: "词库名和词都不能为空。" });
+    const category = requireCategoryName(body.category);
+    const bank = await readWordBank();
+    if (bank[category]) {
+      sendJson(res, 400, { error: "这个题库已经存在。" });
       return;
     }
-    const bank = await readJson(WORD_BANK_PATH);
-    bank[category] ||= [];
-    if (!bank[category].includes(word)) bank[category].push(word);
-    await writeJson(WORD_BANK_PATH, bank);
+    bank[category] = [];
+    await writeWordBank(bank);
     sendJson(res, 200, bank);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/wordbank/entry") {
+    const body = await parseBody(req);
+    const category = requireCategoryName(body.category);
+    const word = String(body.word || "").trim();
+    let hint = String(body.hint || "").trim();
+    if (!word) {
+      sendJson(res, 400, { error: "词条不能为空。" });
+      return;
+    }
+    const bank = await readWordBank();
+    bank[category] ||= [];
+    if (!hint) hint = await generateHint(word, category);
+    bank[category].push({ word, hint });
+    await writeWordBank(bank);
+    sendJson(res, 200, bank);
+    return;
+  }
+
+  if (req.method === "PUT" && url.pathname === "/api/wordbank/entry") {
+    const body = await parseBody(req);
+    const category = requireCategoryName(body.category);
+    const word = String(body.word || "").trim();
+    const hint = String(body.hint || "").trim();
+    if (!word) {
+      sendJson(res, 400, { error: "词条不能为空。" });
+      return;
+    }
+    const bank = await readWordBank();
+    const entries = bank[category];
+    if (!entries) {
+      sendJson(res, 404, { error: "题库不存在。" });
+      return;
+    }
+    const index = requireEntryIndex(body.index, entries);
+    entries[index] = { word, hint };
+    await writeWordBank(bank);
+    sendJson(res, 200, bank);
+    return;
+  }
+
+  if (req.method === "DELETE" && url.pathname === "/api/wordbank/entry") {
+    const body = await parseBody(req);
+    const category = requireCategoryName(body.category);
+    const bank = await readWordBank();
+    const entries = bank[category];
+    if (!entries) {
+      sendJson(res, 404, { error: "题库不存在。" });
+      return;
+    }
+    const index = requireEntryIndex(body.index, entries);
+    entries.splice(index, 1);
+    await writeWordBank(bank);
+    sendJson(res, 200, bank);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/hint") {
+    const body = await parseBody(req);
+    const category = requireCategoryName(body.category);
+    const word = String(body.word || "").trim();
+    if (!word) {
+      sendJson(res, 400, { error: "词条不能为空。" });
+      return;
+    }
+    sendJson(res, 200, { hint: await generateHint(word, category) });
     return;
   }
 
@@ -311,6 +447,26 @@ async function handleApi(req, res) {
       correct,
       at: new Date().toISOString()
     });
+    sendJson(res, 200, publicGame(game));
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/clue") {
+    const body = await parseBody(req);
+    const game = games.get(String(body.gameId || ""));
+    if (!game) {
+      sendJson(res, 400, { error: "缺少游戏。" });
+      return;
+    }
+    if (!game.isHintShown) {
+      game.isHintShown = true;
+      game.history.push({
+        type: "hint",
+        text: "查看线索",
+        answer: game.hint || "这个词条暂时没有线索。",
+        at: new Date().toISOString()
+      });
+    }
     sendJson(res, 200, publicGame(game));
     return;
   }

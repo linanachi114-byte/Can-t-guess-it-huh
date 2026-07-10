@@ -8,77 +8,123 @@
   </head>
   <body>
     <main class="shell">
-      <section class="game">
-        <header class="topbar">
-          <div>
-            <p class="eyebrow">AI 猜词游戏</p>
-            <h1>猜不到吧</h1>
-          </div>
-          <button id="newGameBtn" class="icon-button" type="button" title="新开一局" aria-label="新开一局">↻</button>
-        </header>
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">AI 猜词游戏</p>
+          <h1>猜不到吧</h1>
+        </div>
+        <nav class="main-nav" aria-label="主菜单">
+          <button id="gameNavBtn" class="active" type="button">游戏</button>
+          <button id="libraryNavBtn" type="button">题库</button>
+        </nav>
+      </header>
 
-        <section class="status-strip" aria-live="polite">
-          <div>
-            <span>当前词库</span>
-            <strong id="categoryLabel">未开始</strong>
-          </div>
-          <div>
-            <span>提问</span>
-            <strong id="questionCount">0</strong>
-          </div>
-          <div>
-            <span>猜测</span>
-            <strong id="guessCount">0</strong>
-          </div>
+      <section id="gameView" class="view-layout">
+        <section class="game">
+          <header class="topbar">
+            <div>
+              <h2>本局</h2>
+              <p id="roundSummary" class="round-summary">本局已问 0 轮问题，已猜测 0 次。</p>
+            </div>
+            <button id="newGameBtn" class="icon-button" type="button" title="新开一局" aria-label="新开一局">↻</button>
+          </header>
+
+          <section class="status-strip" aria-live="polite">
+            <div>
+              <span>当前题库</span>
+              <strong id="categoryLabel">未开始</strong>
+            </div>
+            <div>
+              <span>提问</span>
+              <strong id="questionCount">0</strong>
+            </div>
+            <div>
+              <span>猜测</span>
+              <strong id="guessCount">0</strong>
+            </div>
+          </section>
+
+          <section id="hintBanner" class="hint-banner hidden">
+            <span>线索</span>
+            <strong id="hintText"></strong>
+          </section>
+
+          <section id="winBanner" class="win-banner hidden">
+            <span id="bannerTitle">答案正确</span>
+            <strong id="revealedWord"></strong>
+          </section>
+
+          <section class="controls">
+            <div class="mode-tabs" role="tablist" aria-label="输入模式">
+              <button id="askModeBtn" class="active" type="button">问问题</button>
+              <button id="guessModeBtn" type="button">猜答案</button>
+            </div>
+            <form id="playForm" class="play-form">
+              <input id="mainInput" autocomplete="off" placeholder="例如：它是人工制品吗？">
+              <button id="submitBtn" type="submit">提交</button>
+            </form>
+            <div class="action-row">
+              <button id="clueBtn" class="secondary-button" type="button">查看线索</button>
+              <button id="revealBtn" class="danger-button" type="button">我猜不出来，请公布答案</button>
+            </div>
+            <p id="message" class="message"></p>
+          </section>
+
+          <section class="history-panel">
+            <div class="panel-title">
+              <h2>历史记录</h2>
+            </div>
+            <ol id="historyList" class="history-list"></ol>
+            <p id="emptyHistory" class="empty">还没有记录。先问一个问题试试。</p>
+          </section>
         </section>
 
-        <section id="winBanner" class="win-banner hidden">
-          <span id="bannerTitle">答案正确</span>
-          <strong id="revealedWord"></strong>
-        </section>
-
-        <section class="controls">
-          <div class="mode-tabs" role="tablist" aria-label="输入模式">
-            <button id="askModeBtn" class="active" type="button">问问题</button>
-            <button id="guessModeBtn" type="button">猜答案</button>
-          </div>
-          <form id="playForm" class="play-form">
-            <input id="mainInput" autocomplete="off" placeholder="例如：它是人工制品吗？">
-            <button id="submitBtn" type="submit">提交</button>
-          </form>
-          <div class="action-row">
-            <p id="roundSummary" class="round-summary">本局已问 0 轮问题，已猜测 0 次。</p>
-            <button id="revealBtn" class="secondary-button" type="button">我猜不出来，请公布答案</button>
-          </div>
-          <p id="message" class="message"></p>
-        </section>
-
-        <section class="history-panel">
-          <div class="panel-title">
-            <h2>历史记录</h2>
-          </div>
-          <ol id="historyList" class="history-list"></ol>
-          <p id="emptyHistory" class="empty">还没有记录。先问一个问题试试。</p>
-        </section>
+        <aside class="side">
+          <section class="side-section">
+            <div class="panel-title">
+              <h2>本局可用题库</h2>
+              <button id="openLibraryBtn" class="text-button" type="button">管理</button>
+            </div>
+            <div id="categoryList" class="category-list"></div>
+          </section>
+        </aside>
       </section>
 
-      <aside class="side">
-        <section class="side-section">
-          <h2>词库</h2>
-          <div id="categoryList" class="category-list"></div>
+      <section id="libraryView" class="library-view hidden">
+        <section class="library-main">
+          <div class="panel-title">
+            <div>
+              <h2>题库</h2>
+              <p class="subtle">管理题库、词条和每个词条的线索。</p>
+            </div>
+            <form id="categoryForm" class="inline-form">
+              <input id="newCategoryInput" placeholder="新题库名">
+              <button type="submit">新建题库</button>
+            </form>
+          </div>
+
+          <div id="libraryCards" class="library-cards"></div>
         </section>
 
-        <section class="side-section">
-          <h2>添加词条</h2>
-          <form id="wordForm" class="word-form">
-            <input id="categoryInput" list="categoryOptions" placeholder="词库名，例如：歌曲">
-            <datalist id="categoryOptions"></datalist>
-            <input id="wordInput" placeholder="词条，例如：七里香">
-            <button type="submit">添加</button>
+        <section id="libraryEditor" class="library-editor hidden">
+          <div class="panel-title">
+            <div>
+              <h2 id="editorTitle">题库详情</h2>
+              <p id="editorMeta" class="subtle"></p>
+            </div>
+            <button id="closeEditorBtn" class="text-button" type="button">返回题库</button>
+          </div>
+
+          <form id="entryForm" class="entry-form">
+            <input id="entryWordInput" placeholder="新词条">
+            <input id="entryHintInput" placeholder="线索可留空，AI 会自动生成">
+            <button type="submit">添加词条</button>
           </form>
-          <p id="wordMessage" class="message"></p>
+          <p id="libraryMessage" class="message"></p>
+
+          <div id="entryList" class="entry-list"></div>
         </section>
-      </aside>
+      </section>
     </main>
 
     <script src="/app.js" type="module"></script>
