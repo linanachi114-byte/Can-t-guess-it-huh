@@ -15,6 +15,7 @@ const API_KEY = process.env.DEEPSEEK_API_KEY || "";
 const MODEL = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
 const API_URL = "https://api.deepseek.com/chat/completions";
 const WORD_BANK_PATH = path.join(__dirname, "data", "wordbank.json");
+const GAME_HISTORY_PATH = path.join(__dirname, "data", "game-history.json");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const games = new Map();
 
@@ -46,6 +47,15 @@ async function readWordBank() {
 
 async function writeWordBank(bank) {
   await writeJson(WORD_BANK_PATH, normalizeWordBank(bank));
+}
+
+async function readGameHistory() {
+  if (!existsSync(GAME_HISTORY_PATH)) return [];
+  return JSON.parse(await readFile(GAME_HISTORY_PATH, "utf8"));
+}
+
+async function writeGameHistory(history) {
+  await writeJson(GAME_HISTORY_PATH, history);
 }
 
 function normalizeWordBank(rawBank) {
@@ -121,6 +131,7 @@ function publicGame(game) {
   const shownClues = revealedClues(game);
   return {
     id: game.id,
+    shareId: game.shareId || null,
     category: game.category,
     startedAt: game.startedAt,
     isWon: game.isWon,
@@ -134,21 +145,48 @@ function publicGame(game) {
   };
 }
 
+function summarizeOutcome(game) {
+  if (game.isWon) return "won";
+  if (game.isRevealed) return "revealed";
+  return "playing";
+}
+
+async function archiveGame(game) {
+  if (game.shareId) return game.shareId;
+
+  const shareId = crypto.randomUUID();
+  const record = {
+    id: shareId,
+    gameId: game.id,
+    category: game.category,
+    word: game.word,
+    startedAt: game.startedAt,
+    endedAt: new Date().toISOString(),
+    outcome: summarizeOutcome(game),
+    questionCount: game.history.filter((item) => item.type === "question").length,
+    guessCount: game.history.filter((item) => item.type === "guess").length,
+    history: game.history
+  };
+
+  const history = await readGameHistory();
+  history.unshift(record);
+  await writeGameHistory(history.slice(0, 200));
+  game.shareId = shareId;
+  return shareId;
+}
+
 function pickRandom(items) {
   return items[Math.floor(Math.random() * items.length)];
 }
 
 async function startGame(categories) {
   const bank = await readWordBank();
-  let selectedCategories = Array.isArray(categories) && categories.length
+  const allCategories = Object.keys(bank).filter((name) => bank[name].length);
+  const selectedCategories = Array.isArray(categories)
     ? categories.filter((name) => Array.isArray(bank[name]) && bank[name].length)
-    : Object.keys(bank).filter((name) => bank[name].length);
-
+    : allCategories;
   if (!selectedCategories.length) {
-    selectedCategories = Object.keys(bank).filter((name) => bank[name].length);
-  }
-  if (!selectedCategories.length) {
-    throw new Error("当前没有可用词条，请先在题库中添加词。");
+    throw new Error("请至少选择一个有词条的题库。");
   }
 
   const category = pickRandom(selectedCategories);
@@ -332,6 +370,23 @@ async function handleApi(req, res) {
     return;
   }
 
+  if (req.method === "GET" && url.pathname === "/api/history") {
+    sendJson(res, 200, await readGameHistory());
+    return;
+  }
+
+  const shareMatch = url.pathname.match(/^\/api\/share\/([^/]+)$/);
+  if (req.method === "GET" && shareMatch) {
+    const history = await readGameHistory();
+    const record = history.find((item) => item.id === shareMatch[1]);
+    if (!record) {
+      sendJson(res, 404, { error: "分享记录不存在。" });
+      return;
+    }
+    sendJson(res, 200, record);
+    return;
+  }
+
   if (req.method === "POST" && url.pathname === "/api/wordbank/category") {
     const body = await parseBody(req);
     const category = requireCategoryName(body.category);
@@ -474,6 +529,7 @@ async function handleApi(req, res) {
       correct,
       at: new Date().toISOString()
     });
+    if (correct) await archiveGame(game);
     sendJson(res, 200, publicGame(game));
     return;
   }
@@ -514,6 +570,7 @@ async function handleApi(req, res) {
         answer: game.word,
         at: new Date().toISOString()
       });
+      await archiveGame(game);
     }
     sendJson(res, 200, publicGame(game));
     return;

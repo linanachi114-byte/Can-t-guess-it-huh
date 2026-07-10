@@ -16,6 +16,7 @@
         <nav class="main-nav" aria-label="主菜单">
           <button id="gameNavBtn" class="active" type="button">游戏</button>
           <button id="libraryNavBtn" type="button">题库</button>
+          <button id="historyNavBtn" type="button">历史</button>
         </nav>
       </header>
 
@@ -66,6 +67,7 @@
             <div class="action-row">
               <button id="clueBtn" class="secondary-button" type="button">查看下一条线索</button>
               <button id="revealBtn" class="danger-button" type="button">我猜不出来，请公布答案</button>
+              <button id="shareBtn" class="text-button hidden" type="button">分享本局</button>
             </div>
             <p id="message" class="message"></p>
           </section>
@@ -83,7 +85,10 @@
           <section class="side-section">
             <div class="panel-title">
               <h2>本局可用题库</h2>
-              <button id="openLibraryBtn" class="text-button" type="button">管理</button>
+              <div class="panel-actions">
+                <button id="categoryToggleAllBtn" class="text-button" type="button">全不选</button>
+                <button id="openLibraryBtn" class="text-button" type="button">管理</button>
+              </div>
             </div>
             <div id="categoryList" class="category-list"></div>
           </section>
@@ -122,6 +127,31 @@
           <p id="libraryMessage" class="message"></p>
 
           <div id="entryList" class="entry-list"></div>
+        </section>
+      </section>
+
+      <section id="historyView" class="history-view hidden">
+        <section class="library-main">
+          <div class="panel-title">
+            <div>
+              <h2>对局历史</h2>
+              <p class="subtle">记录每局玩家提过的问题、猜测、结果和分享链接。</p>
+            </div>
+            <button id="refreshHistoryBtn" class="text-button" type="button">刷新</button>
+          </div>
+          <div id="gameHistoryList" class="game-history-list"></div>
+          <p id="emptyGameHistory" class="empty">还没有完成的对局。</p>
+        </section>
+      </section>
+
+      <section id="shareView" class="share-view hidden">
+        <section class="share-panel">
+          <p class="eyebrow">猜不到吧 · 分享回放</p>
+          <h2>快来试试你能不能猜到吧！</h2>
+          <p id="shareMeta" class="subtle"></p>
+          <div id="shareSteps" class="share-steps"></div>
+          <button id="nextShareStepBtn" class="secondary-button" type="button">揭晓下一步</button>
+          <button id="exitShareBtn" class="text-button" type="button">返回游戏</button>
         </section>
       </section>
     </main>

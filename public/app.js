@@ -1,6 +1,9 @@
 const state = {
   game: null,
   wordbank: {},
+  gameHistory: [],
+  shareRecord: null,
+  shareStep: 0,
   mode: "ask",
   view: "game",
   selectedCategories: new Set(),
@@ -10,8 +13,11 @@ const state = {
 const els = {
   gameNavBtn: document.querySelector("#gameNavBtn"),
   libraryNavBtn: document.querySelector("#libraryNavBtn"),
+  historyNavBtn: document.querySelector("#historyNavBtn"),
   gameView: document.querySelector("#gameView"),
   libraryView: document.querySelector("#libraryView"),
+  historyView: document.querySelector("#historyView"),
+  shareView: document.querySelector("#shareView"),
   categoryLabel: document.querySelector("#categoryLabel"),
   questionCount: document.querySelector("#questionCount"),
   guessCount: document.querySelector("#guessCount"),
@@ -31,8 +37,10 @@ const els = {
   submitBtn: document.querySelector("#submitBtn"),
   clueBtn: document.querySelector("#clueBtn"),
   revealBtn: document.querySelector("#revealBtn"),
+  shareBtn: document.querySelector("#shareBtn"),
   newGameBtn: document.querySelector("#newGameBtn"),
   openLibraryBtn: document.querySelector("#openLibraryBtn"),
+  categoryToggleAllBtn: document.querySelector("#categoryToggleAllBtn"),
   categoryList: document.querySelector("#categoryList"),
   categoryForm: document.querySelector("#categoryForm"),
   newCategoryInput: document.querySelector("#newCategoryInput"),
@@ -44,7 +52,14 @@ const els = {
   entryForm: document.querySelector("#entryForm"),
   entryWordInput: document.querySelector("#entryWordInput"),
   libraryMessage: document.querySelector("#libraryMessage"),
-  entryList: document.querySelector("#entryList")
+  entryList: document.querySelector("#entryList"),
+  refreshHistoryBtn: document.querySelector("#refreshHistoryBtn"),
+  gameHistoryList: document.querySelector("#gameHistoryList"),
+  emptyGameHistory: document.querySelector("#emptyGameHistory"),
+  shareMeta: document.querySelector("#shareMeta"),
+  shareSteps: document.querySelector("#shareSteps"),
+  nextShareStepBtn: document.querySelector("#nextShareStepBtn"),
+  exitShareBtn: document.querySelector("#exitShareBtn")
 };
 
 async function api(path, options = {}) {
@@ -96,9 +111,13 @@ function setView(view) {
   state.view = view;
   els.gameNavBtn.classList.toggle("active", view === "game");
   els.libraryNavBtn.classList.toggle("active", view === "library");
+  els.historyNavBtn.classList.toggle("active", view === "history");
   els.gameView.classList.toggle("hidden", view !== "game");
   els.libraryView.classList.toggle("hidden", view !== "library");
+  els.historyView.classList.toggle("hidden", view !== "history");
+  els.shareView.classList.toggle("hidden", view !== "share");
   if (view === "library") renderLibrary();
+  if (view === "history") loadGameHistory();
 }
 
 function formatTime(iso) {
@@ -147,6 +166,7 @@ function renderGame() {
   els.submitBtn.disabled = isOver;
   els.revealBtn.disabled = isOver;
   els.clueBtn.disabled = isOver || !canShowMoreClues();
+  els.shareBtn.classList.toggle("hidden", !isOver || !game?.shareId);
 
   [...history].reverse().forEach((item, index) => {
     const originalIndex = history.length - index;
@@ -192,6 +212,133 @@ function renderGame() {
   });
 }
 
+function shareableSteps(record) {
+  return (record.history || []).filter((item) => (
+    item.type === "question" || item.type === "guess" || item.type === "hint" || item.type === "reveal"
+  ));
+}
+
+function outcomeText(outcome) {
+  if (outcome === "won") return "猜对了";
+  if (outcome === "revealed") return "公布答案";
+  return "未结束";
+}
+
+async function loadGameHistory() {
+  try {
+    state.gameHistory = await api("/api/history");
+    renderGameHistory();
+  } catch (error) {
+    els.gameHistoryList.innerHTML = "";
+    els.emptyGameHistory.textContent = error.message;
+    els.emptyGameHistory.classList.remove("hidden");
+  }
+}
+
+function renderGameHistory() {
+  els.gameHistoryList.innerHTML = "";
+  els.emptyGameHistory.classList.toggle("hidden", state.gameHistory.length > 0);
+
+  state.gameHistory.forEach((record) => {
+    const card = document.createElement("article");
+    card.className = "game-history-card";
+
+    const title = document.createElement("div");
+    title.className = "history-card-title";
+    const strong = document.createElement("strong");
+    strong.textContent = `${record.category} · ${outcomeText(record.outcome)}`;
+    const time = document.createElement("span");
+    time.textContent = new Date(record.endedAt).toLocaleString("zh-CN");
+    title.append(strong, time);
+
+    const meta = document.createElement("p");
+    meta.className = "subtle";
+    meta.textContent = `问题 ${record.questionCount} 轮，猜测 ${record.guessCount} 次，答案：${record.word}`;
+
+    const details = document.createElement("ol");
+    details.className = "history-mini-list";
+    (record.history || []).forEach((item) => {
+      const li = document.createElement("li");
+      if (item.type === "question") li.textContent = `问：${item.text} → ${item.answer}`;
+      if (item.type === "guess") li.textContent = `猜：${item.text} → ${item.correct ? "正确" : "错误"}`;
+      if (item.type === "hint") li.textContent = `线索：${item.answer}`;
+      if (item.type === "reveal") li.textContent = `公布答案：${item.answer}`;
+      details.append(li);
+    });
+
+    const actions = document.createElement("div");
+    actions.className = "history-actions";
+    const share = document.createElement("button");
+    share.type = "button";
+    share.className = "text-button";
+    share.textContent = "打开分享";
+    share.addEventListener("click", () => openShare(record.id));
+    actions.append(share);
+
+    card.append(title, meta, details, actions);
+    els.gameHistoryList.append(card);
+  });
+}
+
+async function openShare(id) {
+  try {
+    state.shareRecord = await api(`/api/share/${id}`);
+    state.shareStep = 0;
+    const url = new URL(window.location.href);
+    url.searchParams.set("share", id);
+    window.history.replaceState(null, "", url);
+    renderShare();
+    setView("share");
+  } catch (error) {
+    setMessage(error.message, true);
+  }
+}
+
+function renderShare() {
+  const record = state.shareRecord;
+  if (!record) return;
+  const steps = shareableSteps(record);
+  els.shareMeta.textContent = `题库：${record.category} · ${record.questionCount} 个问题 · ${outcomeText(record.outcome)}`;
+  els.shareSteps.innerHTML = "";
+
+  steps.slice(0, state.shareStep).forEach((item, index) => {
+    const card = document.createElement("article");
+    card.className = "share-step";
+    const label = document.createElement("span");
+    label.className = "share-step-label";
+    label.textContent = `#${index + 1}`;
+    const text = document.createElement("p");
+    if (item.type === "question") text.textContent = `问：${item.text}`;
+    if (item.type === "guess") text.textContent = `猜：${item.text}`;
+    if (item.type === "hint") text.textContent = `查看线索：${item.answer}`;
+    if (item.type === "reveal") text.textContent = "玩家选择公布答案";
+    const result = document.createElement("strong");
+    if (item.type === "question") result.textContent = `AI：${item.answer}`;
+    if (item.type === "guess") result.textContent = item.correct ? "答案正确" : "答案错误";
+    if (item.type === "hint") result.textContent = "线索已出现";
+    if (item.type === "reveal") result.textContent = `正解：${item.answer}`;
+    card.append(label, text, result);
+    els.shareSteps.append(card);
+  });
+
+  const done = state.shareStep >= steps.length;
+  els.nextShareStepBtn.textContent = done ? `最终答案：${record.word}` : "揭晓下一步";
+  els.nextShareStepBtn.disabled = done;
+}
+
+async function shareCurrentGame() {
+  if (!state.game?.shareId) return;
+  const url = new URL(window.location.href);
+  url.searchParams.set("share", state.game.shareId);
+  try {
+    await navigator.clipboard.writeText(url.toString());
+    setMessage("分享链接已复制。");
+  } catch {
+    setMessage(url.toString());
+  }
+  await openShare(state.game.shareId);
+}
+
 function renderCategoryPicker() {
   const categories = Object.keys(state.wordbank);
   const validCategories = new Set(categories);
@@ -214,6 +361,7 @@ function renderCategoryPicker() {
     checkbox.addEventListener("change", () => {
       if (checkbox.checked) state.selectedCategories.add(category);
       else state.selectedCategories.delete(category);
+      updateCategoryToggleButton();
     });
 
     const name = document.createElement("span");
@@ -223,6 +371,23 @@ function renderCategoryPicker() {
     label.append(checkbox, name, count);
     els.categoryList.append(label);
   });
+  updateCategoryToggleButton();
+}
+
+function updateCategoryToggleButton() {
+  const total = Object.keys(state.wordbank).length;
+  const selected = state.selectedCategories.size;
+  els.categoryToggleAllBtn.textContent = selected === total && total > 0 ? "全不选" : "全选";
+}
+
+function toggleAllCategories() {
+  const categories = Object.keys(state.wordbank);
+  if (state.selectedCategories.size === categories.length) {
+    state.selectedCategories.clear();
+  } else {
+    state.selectedCategories = new Set(categories);
+  }
+  renderCategoryPicker();
 }
 
 function renderLibrary() {
@@ -693,12 +858,26 @@ async function regenerateClues(category, index, word, button) {
 
 els.gameNavBtn.addEventListener("click", () => setView("game"));
 els.libraryNavBtn.addEventListener("click", () => setView("library"));
+els.historyNavBtn.addEventListener("click", () => setView("history"));
 els.openLibraryBtn.addEventListener("click", () => setView("library"));
+els.categoryToggleAllBtn.addEventListener("click", toggleAllCategories);
 els.askModeBtn.addEventListener("click", () => setMode("ask"));
 els.guessModeBtn.addEventListener("click", () => setMode("guess"));
 els.playForm.addEventListener("submit", submitTurn);
 els.clueBtn.addEventListener("click", showClue);
 els.revealBtn.addEventListener("click", revealAnswer);
+els.shareBtn.addEventListener("click", shareCurrentGame);
+els.refreshHistoryBtn.addEventListener("click", loadGameHistory);
+els.nextShareStepBtn.addEventListener("click", () => {
+  state.shareStep += 1;
+  renderShare();
+});
+els.exitShareBtn.addEventListener("click", () => {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("share");
+  window.history.replaceState(null, "", url);
+  setView("game");
+});
 els.newGameBtn.addEventListener("click", async () => {
   try {
     await newGame();
@@ -717,6 +896,10 @@ await loadWordbank();
 renderLibrary();
 
 try {
+  const shareId = new URLSearchParams(window.location.search).get("share");
+  if (shareId) {
+    await openShare(shareId);
+  }
   const gameId = localStorage.getItem("guess-word-game-id");
   if (gameId) {
     state.game = await api(`/api/game/${gameId}`);
