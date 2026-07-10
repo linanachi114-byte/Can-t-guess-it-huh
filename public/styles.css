@@ -241,7 +241,7 @@ h2 {
 }
 
 .entry-form {
-  grid-template-columns: minmax(140px, 220px) 1fr 112px;
+  grid-template-columns: minmax(180px, 1fr) 112px;
   align-items: center;
 }
 
@@ -290,7 +290,7 @@ textarea:focus {
 .play-form button,
 .inline-form button,
 .entry-form button,
-.entry-row button {
+.entry-main button {
   min-height: 46px;
   border-radius: 8px;
   background: var(--accent);
@@ -515,10 +515,112 @@ button:disabled {
 
 .entry-row {
   display: grid;
-  grid-template-columns: minmax(120px, 180px) minmax(200px, 1fr) 76px 92px 76px;
+  gap: 12px;
+  padding: 12px;
+}
+
+.entry-main {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) 76px 92px 76px;
   gap: 8px;
-  padding: 10px;
   align-items: center;
+}
+
+.clue-list {
+  display: grid;
+  gap: 8px;
+}
+
+.clue-chip {
+  display: grid;
+  grid-template-columns: 34px 28px minmax(0, 1fr) 34px 34px;
+  gap: 8px;
+  align-items: center;
+  min-height: 42px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.clue-chip.dragging {
+  opacity: 0.55;
+}
+
+.clue-chip.drag-over {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(13, 124, 102, 0.14);
+}
+
+.clue-chip.editing {
+  grid-template-columns: minmax(0, 1fr) 34px 34px;
+}
+
+.drag-handle,
+.icon-tool {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--muted);
+  font-weight: 900;
+  display: inline-grid;
+  place-items: center;
+}
+
+.drag-handle {
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.icon-tool:hover,
+.drag-handle:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+.icon-tool.danger {
+  color: var(--danger);
+  background: #fff7f6;
+}
+
+.clue-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #e8f4f1;
+  color: var(--accent-dark);
+  display: inline-grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.clue-text {
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.clue-edit-input {
+  min-height: 36px;
+}
+
+.add-clue-button {
+  justify-self: start;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: var(--accent-dark);
+  background: #edf7f5;
+  border: 1px dashed #9fd0c6;
+  font-weight: 800;
 }
 
 @media (max-width: 920px) {
@@ -551,7 +653,8 @@ button:disabled {
   .play-form,
   .inline-form,
   .entry-form,
-  .entry-row {
+  .entry-main,
+  .clue-chip {
     grid-template-columns: 1fr;
   }
 

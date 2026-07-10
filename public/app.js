@@ -43,7 +43,6 @@ const els = {
   closeEditorBtn: document.querySelector("#closeEditorBtn"),
   entryForm: document.querySelector("#entryForm"),
   entryWordInput: document.querySelector("#entryWordInput"),
-  entryHintInput: document.querySelector("#entryHintInput"),
   libraryMessage: document.querySelector("#libraryMessage"),
   entryList: document.querySelector("#entryList")
 };
@@ -110,15 +109,10 @@ function formatTime(iso) {
   });
 }
 
-function cluesToText(clues) {
-  return Array.isArray(clues) ? clues.join("\n") : "";
-}
-
-function textToClues(text) {
-  return String(text || "")
-    .split(/\r?\n|[；;]/)
-    .map((line) => line.replace(/^\s*(?:线索)?\s*\d+\s*[.、:：-]?\s*/, "").trim())
-    .filter(Boolean);
+function normalizeClues(clues) {
+  return Array.isArray(clues)
+    ? clues.map((clue) => String(clue || "").trim()).filter(Boolean)
+    : [];
 }
 
 function renderGame() {
@@ -268,31 +262,30 @@ function renderEditor(category) {
   const entries = state.wordbank[category] || [];
   els.libraryEditor.classList.remove("hidden");
   els.editorTitle.textContent = category;
-  els.editorMeta.textContent = `${entries.length} 个词条。每行一条线索，游戏里会从上到下逐条公布。`;
+  els.editorMeta.textContent = `${entries.length} 个词条。拖动线索左侧的三横线可以调整公布顺序。`;
   els.entryList.innerHTML = "";
 
   entries.forEach((entry, index) => {
     const row = document.createElement("article");
     row.className = "entry-row";
 
+    const main = document.createElement("div");
+    main.className = "entry-main";
+
     const wordInput = document.createElement("input");
     wordInput.value = entry.word;
     wordInput.placeholder = "词条";
 
-    const clueInput = document.createElement("textarea");
-    clueInput.value = cluesToText(entry.clues);
-    clueInput.placeholder = "每行一条线索";
-
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
     saveBtn.textContent = "保存";
-    saveBtn.addEventListener("click", () => saveEntry(category, index, wordInput.value, clueInput.value));
+    saveBtn.addEventListener("click", () => saveEntry(category, index, wordInput.value, entry.clues));
 
     const generateBtn = document.createElement("button");
     generateBtn.type = "button";
     generateBtn.className = "secondary-button";
     generateBtn.textContent = "AI 线索";
-    generateBtn.addEventListener("click", () => regenerateClues(category, wordInput.value, clueInput, generateBtn));
+    generateBtn.addEventListener("click", () => regenerateClues(category, index, wordInput.value, generateBtn));
 
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
@@ -300,8 +293,83 @@ function renderEditor(category) {
     deleteBtn.textContent = "删除";
     deleteBtn.addEventListener("click", () => deleteEntry(category, index));
 
-    row.append(wordInput, clueInput, saveBtn, generateBtn, deleteBtn);
+    main.append(wordInput, saveBtn, generateBtn, deleteBtn);
+
+    const clueList = document.createElement("div");
+    clueList.className = "clue-list";
+    renderClueItems(clueList, category, index, wordInput, entry.clues || []);
+
+    const addClueBtn = document.createElement("button");
+    addClueBtn.type = "button";
+    addClueBtn.className = "add-clue-button";
+    addClueBtn.textContent = "+ 添加线索";
+    addClueBtn.addEventListener("click", () => addClueInline(clueList, category, index, wordInput.value));
+
+    row.append(main, clueList, addClueBtn);
     els.entryList.append(row);
+  });
+}
+
+function renderClueItems(container, category, entryIndex, wordInput, clues) {
+  container.innerHTML = "";
+  normalizeClues(clues).forEach((clue, clueIndex) => {
+    const item = document.createElement("div");
+    item.className = "clue-chip";
+    item.draggable = true;
+    item.dataset.index = String(clueIndex);
+
+    const handle = document.createElement("button");
+    handle.type = "button";
+    handle.className = "drag-handle";
+    handle.title = "拖动排序";
+    handle.setAttribute("aria-label", "拖动排序");
+    handle.textContent = "☰";
+
+    const number = document.createElement("span");
+    number.className = "clue-number";
+    number.textContent = String(clueIndex + 1);
+
+    const text = document.createElement("span");
+    text.className = "clue-text";
+    text.textContent = clue;
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "icon-tool";
+    editBtn.title = "编辑线索";
+    editBtn.setAttribute("aria-label", "编辑线索");
+    editBtn.textContent = "✎";
+    editBtn.addEventListener("click", () => editClueInline(item, category, entryIndex, clueIndex, wordInput.value));
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "icon-tool danger";
+    deleteBtn.title = "删除线索";
+    deleteBtn.setAttribute("aria-label", "删除线索");
+    deleteBtn.textContent = "×";
+    deleteBtn.addEventListener("click", () => deleteClue(category, entryIndex, clueIndex, wordInput.value));
+
+    item.addEventListener("dragstart", (event) => {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(clueIndex));
+      item.classList.add("dragging");
+    });
+    item.addEventListener("dragend", () => item.classList.remove("dragging"));
+    item.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      item.classList.add("drag-over");
+    });
+    item.addEventListener("dragleave", () => item.classList.remove("drag-over"));
+    item.addEventListener("drop", async (event) => {
+      event.preventDefault();
+      item.classList.remove("drag-over");
+      const fromIndex = Number(event.dataTransfer.getData("text/plain"));
+      if (!Number.isInteger(fromIndex) || fromIndex === clueIndex) return;
+      await moveClue(category, entryIndex, fromIndex, clueIndex, wordInput.value);
+    });
+
+    item.append(handle, number, text, editBtn, deleteBtn);
+    container.append(item);
   });
 }
 
@@ -425,7 +493,6 @@ async function addEntry(event) {
   event.preventDefault();
   if (!state.activeCategory) return;
   const word = els.entryWordInput.value.trim();
-  const clues = textToClues(els.entryHintInput.value);
   if (!word) {
     setLibraryMessage("词条不能为空。", true);
     return;
@@ -433,14 +500,13 @@ async function addEntry(event) {
 
   const button = els.entryForm.querySelector("button");
   button.disabled = true;
-  button.textContent = clues.length ? "添加中" : "生成线索中";
+  button.textContent = "生成线索中";
   try {
     const bank = await api("/api/wordbank/entry", {
       method: "POST",
-      body: JSON.stringify({ category: state.activeCategory, word, clues })
+      body: JSON.stringify({ category: state.activeCategory, word, clues: [] })
     });
     els.entryWordInput.value = "";
-    els.entryHintInput.value = "";
     await refreshWordbank(bank);
     setLibraryMessage(`已添加：${word}`);
   } catch (error) {
@@ -451,11 +517,11 @@ async function addEntry(event) {
   }
 }
 
-async function saveEntry(category, index, word, clueText) {
+async function saveEntry(category, index, word, clues) {
   try {
     const bank = await api("/api/wordbank/entry", {
       method: "PUT",
-      body: JSON.stringify({ category, index, word, clues: textToClues(clueText) })
+      body: JSON.stringify({ category, index, word, clues: normalizeClues(clues) })
     });
     await refreshWordbank(bank);
     setLibraryMessage("已保存。");
@@ -477,7 +543,132 @@ async function deleteEntry(category, index) {
   }
 }
 
-async function regenerateClues(category, word, clueInput, button) {
+async function updateEntry(category, index, word, clues, message = "已保存。") {
+  const bank = await api("/api/wordbank/entry", {
+    method: "PUT",
+    body: JSON.stringify({ category, index, word, clues: normalizeClues(clues) })
+  });
+  await refreshWordbank(bank);
+  setLibraryMessage(message);
+}
+
+function addClueInline(container, category, entryIndex, word) {
+  const entry = state.wordbank[category]?.[entryIndex];
+  if (!entry) return;
+
+  const item = document.createElement("div");
+  item.className = "clue-chip editing";
+
+  const input = document.createElement("input");
+  input.className = "clue-edit-input";
+  input.placeholder = "输入新线索";
+
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "icon-tool";
+  saveBtn.title = "保存线索";
+  saveBtn.textContent = "✓";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "icon-tool danger";
+  cancelBtn.title = "取消";
+  cancelBtn.textContent = "×";
+
+  const save = async () => {
+    const clue = input.value.trim();
+    if (!clue) return;
+    try {
+      await updateEntry(category, entryIndex, word, [...normalizeClues(entry.clues), clue], "已添加线索。");
+    } catch (error) {
+      setLibraryMessage(error.message, true);
+    }
+  };
+
+  saveBtn.addEventListener("click", save);
+  cancelBtn.addEventListener("click", () => renderLibrary());
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") save();
+    if (event.key === "Escape") renderLibrary();
+  });
+
+  item.append(input, saveBtn, cancelBtn);
+  container.append(item);
+  input.focus();
+}
+
+async function deleteClue(category, entryIndex, clueIndex, word) {
+  const entry = state.wordbank[category]?.[entryIndex];
+  if (!entry) return;
+  const clues = normalizeClues(entry.clues).filter((_, index) => index !== clueIndex);
+  try {
+    await updateEntry(category, entryIndex, word, clues, "已删除线索。");
+  } catch (error) {
+    setLibraryMessage(error.message, true);
+  }
+}
+
+async function moveClue(category, entryIndex, fromIndex, toIndex, word) {
+  const entry = state.wordbank[category]?.[entryIndex];
+  if (!entry) return;
+  const clues = normalizeClues(entry.clues);
+  const [moved] = clues.splice(fromIndex, 1);
+  clues.splice(toIndex, 0, moved);
+  try {
+    await updateEntry(category, entryIndex, word, clues, "已调整线索顺序。");
+  } catch (error) {
+    setLibraryMessage(error.message, true);
+  }
+}
+
+function editClueInline(item, category, entryIndex, clueIndex, word) {
+  const entry = state.wordbank[category]?.[entryIndex];
+  if (!entry) return;
+  const current = normalizeClues(entry.clues)[clueIndex] || "";
+  item.classList.add("editing");
+  item.innerHTML = "";
+
+  const input = document.createElement("input");
+  input.className = "clue-edit-input";
+  input.value = current;
+
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "icon-tool";
+  saveBtn.title = "保存线索";
+  saveBtn.textContent = "✓";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "icon-tool danger";
+  cancelBtn.title = "取消编辑";
+  cancelBtn.textContent = "×";
+
+  const save = async () => {
+    const next = input.value.trim();
+    if (!next) return;
+    const clues = normalizeClues(entry.clues);
+    clues[clueIndex] = next;
+    try {
+      await updateEntry(category, entryIndex, word, clues, "已更新线索。");
+    } catch (error) {
+      setLibraryMessage(error.message, true);
+    }
+  };
+
+  saveBtn.addEventListener("click", save);
+  cancelBtn.addEventListener("click", () => renderLibrary());
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") save();
+    if (event.key === "Escape") renderLibrary();
+  });
+
+  item.append(input, saveBtn, cancelBtn);
+  input.focus();
+  input.select();
+}
+
+async function regenerateClues(category, index, word, button) {
   const cleanedWord = word.trim();
   if (!cleanedWord) {
     setLibraryMessage("请先填写词条。", true);
@@ -491,8 +682,7 @@ async function regenerateClues(category, word, clueInput, button) {
       method: "POST",
       body: JSON.stringify({ category, word: cleanedWord })
     });
-    clueInput.value = cluesToText(data.clues || []);
-    setLibraryMessage("AI 已生成 3 条分层线索，记得保存。");
+    await updateEntry(category, index, cleanedWord, data.clues || [], "AI 已生成并保存 3 条分层线索。");
   } catch (error) {
     setLibraryMessage(error.message, true);
   } finally {
