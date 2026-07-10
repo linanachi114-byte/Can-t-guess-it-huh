@@ -80,7 +80,7 @@ function splitClues(value) {
 
 function cleanClue(value) {
   return String(value || "")
-    .replace(/^\s*(?:线索)?\s*\d+\s*[.、:：-]?\s*/, "")
+    .replace(/^\s*(?:线索\s*)?\d+\s*[.、:：-]\s*/, "")
     .trim();
 }
 
