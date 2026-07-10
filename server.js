@@ -51,23 +51,37 @@ async function writeWordBank(bank) {
 function normalizeWordBank(rawBank) {
   const bank = {};
   for (const [category, entries] of Object.entries(rawBank || {})) {
-    if (!Array.isArray(entries)) {
-      bank[category] = [];
-      continue;
-    }
-    bank[category] = entries
-      .map((entry) => {
-        if (typeof entry === "string") {
-          return { word: entry.trim(), hint: "" };
-        }
-        return {
-          word: String(entry?.word || "").trim(),
-          hint: String(entry?.hint || "").trim()
-        };
-      })
-      .filter((entry) => entry.word);
+    bank[category] = Array.isArray(entries)
+      ? entries.map(normalizeEntry).filter((entry) => entry.word)
+      : [];
   }
   return bank;
+}
+
+function normalizeEntry(entry) {
+  if (typeof entry === "string") {
+    return { word: entry.trim(), clues: [] };
+  }
+
+  const word = String(entry?.word || "").trim();
+  const clues = Array.isArray(entry?.clues)
+    ? entry.clues.map(cleanClue).filter(Boolean)
+    : splitClues(entry?.hint);
+
+  return { word, clues };
+}
+
+function splitClues(value) {
+  return String(value || "")
+    .split(/\r?\n|[；;]/)
+    .map(cleanClue)
+    .filter(Boolean);
+}
+
+function cleanClue(value) {
+  return String(value || "")
+    .replace(/^\s*(?:线索)?\s*\d+\s*[.、:：-]?\s*/, "")
+    .trim();
 }
 
 function sendJson(res, status, data) {
@@ -99,15 +113,22 @@ function normalizeAnswer(text) {
     .trim();
 }
 
+function revealedClues(game) {
+  return game.clues.slice(0, game.clueIndex);
+}
+
 function publicGame(game) {
+  const shownClues = revealedClues(game);
   return {
     id: game.id,
     category: game.category,
     startedAt: game.startedAt,
     isWon: game.isWon,
     isRevealed: Boolean(game.isRevealed),
-    isHintShown: Boolean(game.isHintShown),
-    revealedHint: game.isHintShown || game.isWon || game.isRevealed ? game.hint : null,
+    clueIndex: game.clueIndex,
+    clueCount: game.clues.length,
+    revealedClues: shownClues,
+    revealedHint: shownClues.join(" / ") || null,
     revealedWord: game.isWon || game.isRevealed ? game.word : null,
     history: game.history
   };
@@ -122,6 +143,7 @@ async function startGame(categories) {
   let selectedCategories = Array.isArray(categories) && categories.length
     ? categories.filter((name) => Array.isArray(bank[name]) && bank[name].length)
     : Object.keys(bank).filter((name) => bank[name].length);
+
   if (!selectedCategories.length) {
     selectedCategories = Object.keys(bank).filter((name) => bank[name].length);
   }
@@ -134,12 +156,12 @@ async function startGame(categories) {
   const game = {
     id: crypto.randomUUID(),
     word: entry.word,
-    hint: entry.hint,
+    clues: entry.clues,
+    clueIndex: 0,
     category,
     startedAt: new Date().toISOString(),
     isWon: false,
     isRevealed: false,
-    isHintShown: false,
     history: []
   };
   games.set(game.id, game);
@@ -208,7 +230,7 @@ async function answerQuestion(game, question) {
     },
     {
       role: "user",
-      content: `隐藏答案：${game.word}\n所属题库：${game.category}\n已经公布的线索：${game.isHintShown ? game.hint : "暂无"}\n最近历史：\n${compactHistory || "暂无"}\n\n玩家问题：${question}\n请只输出：是、否、是也不是。`
+      content: `隐藏答案：${game.word}\n所属题库：${game.category}\n已公布线索：${revealedClues(game).join("；") || "暂无"}\n最近历史：\n${compactHistory || "暂无"}\n\n玩家问题：${question}\n请只输出：是、否、是也不是。`
     }
   ]);
 
@@ -237,19 +259,24 @@ async function judgeGuess(game, guess) {
   }
 }
 
-async function generateHint(word, category) {
+async function generateClues(word, category) {
   const content = await askDeepSeek([
     {
       role: "system",
       content:
-        "你要为中文猜词游戏生成一条线索。线索要能明显缩小范围，但不能直接说出答案，不能包含答案中的完整词语或明显同义替换。输出一句中文，20到35个字，不要解释。"
+        "你要为中文猜词游戏生成分层线索。必须优先理解题库名代表的语境：同一个词在不同题库里含义可能完全不同，例如题库是“杀戮尖塔”时，“悔恨”应理解为游戏中的诅咒卡，而不是普通情绪。生成 3 条线索，按从宽到窄排列。每条线索只能包含一个事实，不能把多个特征合并在同一句里。第 1 条只说大领域或大类别，第 2 条只说一个泛属性，第 3 条给一个中等强度特征。不要直接写出答案，不要包含答案完整词语，不要使用唯一定位式描述。避免“最大、唯一、标志、代表作、具体节日、作者、歌手、画家”等一眼锁定的信息。每条 4 到 12 个中文字符。只输出三行，每行一条线索，不要编号，不要解释。"
     },
     {
       role: "user",
-      content: `题库：${category}\n目标词：${word}\n请生成一条线索。`
+      content: `题库名：${category}\n目标词：${word}\n请根据题库语境生成 3 条分层线索。`
     }
-  ], 120);
-  return content.replace(/^["“”']|["“”']$/g, "").trim();
+  ], 240);
+  return splitClues(content).slice(0, 3);
+}
+
+function cluesFromBody(body) {
+  if (Array.isArray(body.clues)) return body.clues.map(cleanClue).filter(Boolean);
+  return splitClues(body.clues ?? body.hint);
 }
 
 function requireCategoryName(category) {
@@ -323,15 +350,15 @@ async function handleApi(req, res) {
     const body = await parseBody(req);
     const category = requireCategoryName(body.category);
     const word = String(body.word || "").trim();
-    let hint = String(body.hint || "").trim();
+    let clues = cluesFromBody(body);
     if (!word) {
       sendJson(res, 400, { error: "词条不能为空。" });
       return;
     }
     const bank = await readWordBank();
     bank[category] ||= [];
-    if (!hint) hint = await generateHint(word, category);
-    bank[category].push({ word, hint });
+    if (!clues.length) clues = await generateClues(word, category);
+    bank[category].push({ word, clues });
     await writeWordBank(bank);
     sendJson(res, 200, bank);
     return;
@@ -341,7 +368,7 @@ async function handleApi(req, res) {
     const body = await parseBody(req);
     const category = requireCategoryName(body.category);
     const word = String(body.word || "").trim();
-    const hint = String(body.hint || "").trim();
+    const clues = cluesFromBody(body);
     if (!word) {
       sendJson(res, 400, { error: "词条不能为空。" });
       return;
@@ -353,7 +380,7 @@ async function handleApi(req, res) {
       return;
     }
     const index = requireEntryIndex(body.index, entries);
-    entries[index] = { word, hint };
+    entries[index] = { word, clues };
     await writeWordBank(bank);
     sendJson(res, 200, bank);
     return;
@@ -383,7 +410,7 @@ async function handleApi(req, res) {
       sendJson(res, 400, { error: "词条不能为空。" });
       return;
     }
-    sendJson(res, 200, { hint: await generateHint(word, category) });
+    sendJson(res, 200, { clues: await generateClues(word, category) });
     return;
   }
 
@@ -458,12 +485,13 @@ async function handleApi(req, res) {
       sendJson(res, 400, { error: "缺少游戏。" });
       return;
     }
-    if (!game.isHintShown) {
-      game.isHintShown = true;
+    if (game.clueIndex < game.clues.length) {
+      const clue = game.clues[game.clueIndex];
+      game.clueIndex += 1;
       game.history.push({
         type: "hint",
-        text: "查看线索",
-        answer: game.hint || "这个词条暂时没有线索。",
+        text: `查看第 ${game.clueIndex} 条线索`,
+        answer: clue,
         at: new Date().toISOString()
       });
     }

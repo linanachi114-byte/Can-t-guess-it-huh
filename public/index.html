@@ -64,7 +64,7 @@
               <button id="submitBtn" type="submit">提交</button>
             </form>
             <div class="action-row">
-              <button id="clueBtn" class="secondary-button" type="button">查看线索</button>
+              <button id="clueBtn" class="secondary-button" type="button">查看下一条线索</button>
               <button id="revealBtn" class="danger-button" type="button">我猜不出来，请公布答案</button>
             </div>
             <p id="message" class="message"></p>
@@ -117,7 +117,7 @@
 
           <form id="entryForm" class="entry-form">
             <input id="entryWordInput" placeholder="新词条">
-            <input id="entryHintInput" placeholder="线索可留空，AI 会自动生成">
+            <textarea id="entryHintInput" placeholder="线索可留空，AI 会自动生成；手写时每行一条"></textarea>
             <button type="submit">添加词条</button>
           </form>
           <p id="libraryMessage" class="message"></p>

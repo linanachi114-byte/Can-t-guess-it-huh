@@ -25,7 +25,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -210,6 +211,11 @@ h2 {
   line-height: 1.45;
 }
 
+.hint-banner strong {
+  display: grid;
+  gap: 4px;
+}
+
 .hidden {
   display: none !important;
 }
@@ -253,18 +259,30 @@ h2 {
   font-weight: 700;
 }
 
-input {
+input,
+textarea {
   width: 100%;
-  min-height: 46px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 0 14px;
   background: white;
   color: var(--ink);
   outline: none;
 }
 
-input:focus {
+input {
+  min-height: 46px;
+  padding: 0 14px;
+}
+
+textarea {
+  min-height: 78px;
+  padding: 12px 14px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(13, 124, 102, 0.16);
 }

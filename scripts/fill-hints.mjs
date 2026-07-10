@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 const root = path.resolve(__dirname, "..");
 const envPath = path.join(root, ".env");
 const bankPath = path.join(root, "data", "wordbank.json");
+const regenerateAll = process.argv.includes("--all");
 
 loadEnv(envPath);
 
@@ -22,18 +23,18 @@ if (!API_KEY) {
 const bank = normalizeWordBank(JSON.parse(await readFile(bankPath, "utf8")));
 
 for (const [category, entries] of Object.entries(bank)) {
-  const missing = entries.filter((entry) => !entry.hint);
-  if (!missing.length) continue;
+  const targets = entries.filter((entry) => regenerateAll || entry.clues.length === 0);
+  if (!targets.length) continue;
 
-  console.log(`生成线索：${category} (${missing.length})`);
-  const generated = await generateHints(category, missing.map((entry) => entry.word));
-  for (const entry of missing) {
-    entry.hint = generated[entry.word] || fallbackHint(entry.word, category);
+  console.log(`生成分层线索：${category} (${targets.length})`);
+  const generated = await generateClues(category, targets.map((entry) => entry.word));
+  for (const entry of targets) {
+    entry.clues = generated[entry.word] || fallbackClues(category);
   }
 }
 
 await writeFile(bankPath, `${JSON.stringify(bank, null, 2)}\n`, "utf8");
-console.log("线索已写入 data/wordbank.json");
+console.log("分层线索已写入 data/wordbank.json");
 
 function loadEnv(filePath) {
   if (!existsSync(filePath)) return;
@@ -53,37 +54,57 @@ function normalizeWordBank(rawBank) {
   const normalized = {};
   for (const [category, entries] of Object.entries(rawBank || {})) {
     normalized[category] = Array.isArray(entries)
-      ? entries
-          .map((entry) => {
-            if (typeof entry === "string") return { word: entry.trim(), hint: "" };
-            return {
-              word: String(entry?.word || "").trim(),
-              hint: String(entry?.hint || "").trim()
-            };
-          })
-          .filter((entry) => entry.word)
+      ? entries.map(normalizeEntry).filter((entry) => entry.word)
       : [];
   }
   return normalized;
 }
 
-async function generateHints(category, words) {
+function normalizeEntry(entry) {
+  if (typeof entry === "string") return { word: entry.trim(), clues: [] };
+  const clues = Array.isArray(entry?.clues)
+    ? entry.clues.map(cleanClue).filter(Boolean)
+    : splitClues(entry?.hint);
+  return {
+    word: String(entry?.word || "").trim(),
+    clues
+  };
+}
+
+function splitClues(value) {
+  return String(value || "")
+    .split(/\r?\n|[；;]/)
+    .map(cleanClue)
+    .filter(Boolean);
+}
+
+function cleanClue(value) {
+  return String(value || "")
+    .replace(/^\s*(?:线索)?\s*\d+\s*[.、:：-]?\s*/, "")
+    .trim();
+}
+
+async function generateClues(category, words) {
   const content = await askDeepSeek([
     {
       role: "system",
       content:
-        "你要为中文猜词游戏批量生成线索。每条线索要能明显缩小范围，但不能直接说出答案，不能包含目标词的完整词语。每条线索 20 到 35 个中文字符。只输出 JSON 数组，不要解释。"
+        "你要为中文猜词游戏批量生成分层线索。必须优先理解题库名代表的语境：同一个词在不同题库里含义可能完全不同，例如题库是“杀戮尖塔”时，“悔恨”应理解为游戏中的诅咒卡，而不是普通情绪。每个目标生成 3 条线索，按从宽到窄排列。每条线索只能包含一个事实，不能把多个特征合并在同一句里。第 1 条只说大领域或大类别，第 2 条只说一个泛属性，第 3 条给一个中等强度特征。不要直接写出答案，不要包含答案完整词语，不要使用唯一定位式描述。避免“最大、唯一、标志、代表作、具体节日、作者、歌手、画家”等一眼锁定的信息。每条 4 到 12 个中文字符。每个目标输出一行，格式必须是：目标词<TAB>线索1<TAB>线索2<TAB>线索3。不要编号，不要解释。"
     },
     {
       role: "user",
-      content: `题库：${category}\n目标词列表：${JSON.stringify(words)}\n输出格式：[{"word":"目标词","hint":"线索"}]`
+      content: `题库名：${category}\n目标词列表：${JSON.stringify(words)}`
     }
-  ], 3000);
+  ], 5000);
 
-  const match = content.match(/\[[\s\S]*\]/);
-  if (!match) return {};
-  const parsed = JSON.parse(match[0]);
-  return Object.fromEntries(parsed.map((item) => [String(item.word || "").trim(), String(item.hint || "").trim()]));
+  const result = {};
+  for (const line of content.split(/\r?\n/)) {
+    const parts = line.split("\t").map((part) => part.trim()).filter(Boolean);
+    if (parts.length >= 4) {
+      result[parts[0]] = parts.slice(1, 4).map(cleanClue).filter(Boolean);
+    }
+  }
+  return result;
 }
 
 async function askDeepSeek(messages, maxTokens) {
@@ -113,6 +134,6 @@ async function askDeepSeek(messages, maxTokens) {
   return content;
 }
 
-function fallbackHint(word, category) {
-  return `这个词来自${category}题库，常和特定场景或文化印象联系在一起。`;
+function fallbackClues(category) {
+  return [`来自${category}题库`, "有明确辨识特征", "常见于特定语境"];
 }

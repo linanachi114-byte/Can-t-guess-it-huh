@@ -72,11 +72,15 @@ function isGameOver() {
   return Boolean(state.game?.isWon || state.game?.isRevealed);
 }
 
+function canShowMoreClues() {
+  return Boolean(state.game && (state.game.clueIndex || 0) < (state.game.clueCount || 0));
+}
+
 function setLoading(isLoading) {
   const isOver = isGameOver();
   els.submitBtn.disabled = isLoading || isOver;
   els.revealBtn.disabled = isLoading || isOver;
-  els.clueBtn.disabled = isLoading || isOver || Boolean(state.game?.isHintShown);
+  els.clueBtn.disabled = isLoading || isOver || !canShowMoreClues();
   els.newGameBtn.disabled = isLoading;
   els.submitBtn.textContent = isLoading ? "等待中" : "提交";
 }
@@ -106,12 +110,26 @@ function formatTime(iso) {
   });
 }
 
+function cluesToText(clues) {
+  return Array.isArray(clues) ? clues.join("\n") : "";
+}
+
+function textToClues(text) {
+  return String(text || "")
+    .split(/\r?\n|[；;]/)
+    .map((line) => line.replace(/^\s*(?:线索)?\s*\d+\s*[.、:：-]?\s*/, "").trim())
+    .filter(Boolean);
+}
+
 function renderGame() {
   const game = state.game;
   const history = game?.history || [];
   const questionTotal = history.filter((item) => item.type === "question").length;
   const guessTotal = history.filter((item) => item.type === "guess").length;
   const isOver = isGameOver();
+  const shownClues = game?.revealedClues || [];
+  const clueIndex = game?.clueIndex || 0;
+  const clueCount = game?.clueCount || 0;
 
   els.categoryLabel.textContent = game ? game.category : "未开始";
   els.questionCount.textContent = questionTotal;
@@ -120,15 +138,21 @@ function renderGame() {
   els.historyList.innerHTML = "";
   els.emptyHistory.classList.toggle("hidden", history.length > 0);
 
-  els.hintBanner.classList.toggle("hidden", !game?.revealedHint);
-  els.hintText.textContent = game?.revealedHint || "";
+  els.hintBanner.classList.toggle("hidden", shownClues.length === 0);
+  els.hintText.innerHTML = "";
+  shownClues.forEach((clue, index) => {
+    const item = document.createElement("span");
+    item.textContent = `${index + 1}. ${clue}`;
+    els.hintText.append(item);
+  });
+  els.clueBtn.textContent = clueIndex < clueCount ? `查看下一条线索（${clueIndex}/${clueCount}）` : "线索已用完";
   els.winBanner.classList.toggle("hidden", !isOver);
   els.bannerTitle.textContent = game?.isWon ? "答案正确" : "已公布答案";
   els.revealedWord.textContent = game?.revealedWord || "";
   els.mainInput.disabled = isOver;
   els.submitBtn.disabled = isOver;
   els.revealBtn.disabled = isOver;
-  els.clueBtn.disabled = isOver || Boolean(game?.isHintShown);
+  els.clueBtn.disabled = isOver || !canShowMoreClues();
 
   [...history].reverse().forEach((item, index) => {
     const originalIndex = history.length - index;
@@ -220,7 +244,7 @@ function renderLibrary() {
 function renderLibraryCards() {
   els.libraryCards.innerHTML = "";
   Object.entries(state.wordbank).forEach(([category, entries]) => {
-    const hinted = entries.filter((entry) => entry.hint).length;
+    const clueTotal = entries.reduce((sum, entry) => sum + (entry.clues?.length || 0), 0);
     const card = document.createElement("button");
     card.className = "library-card";
     card.type = "button";
@@ -232,7 +256,7 @@ function renderLibraryCards() {
     const title = document.createElement("strong");
     title.textContent = category;
     const meta = document.createElement("span");
-    meta.textContent = `${entries.length} 个词条 · ${hinted} 条线索`;
+    meta.textContent = `${entries.length} 个词条 · ${clueTotal} 条线索`;
     const sample = document.createElement("small");
     sample.textContent = entries.slice(0, 3).map((entry) => entry.word).join("、") || "空题库";
     card.append(title, meta, sample);
@@ -244,7 +268,7 @@ function renderEditor(category) {
   const entries = state.wordbank[category] || [];
   els.libraryEditor.classList.remove("hidden");
   els.editorTitle.textContent = category;
-  els.editorMeta.textContent = `${entries.length} 个词条。线索可以手写，也可以让 AI 重新生成。`;
+  els.editorMeta.textContent = `${entries.length} 个词条。每行一条线索，游戏里会从上到下逐条公布。`;
   els.entryList.innerHTML = "";
 
   entries.forEach((entry, index) => {
@@ -255,20 +279,20 @@ function renderEditor(category) {
     wordInput.value = entry.word;
     wordInput.placeholder = "词条";
 
-    const hintInput = document.createElement("input");
-    hintInput.value = entry.hint || "";
-    hintInput.placeholder = "线索";
+    const clueInput = document.createElement("textarea");
+    clueInput.value = cluesToText(entry.clues);
+    clueInput.placeholder = "每行一条线索";
 
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
     saveBtn.textContent = "保存";
-    saveBtn.addEventListener("click", () => saveEntry(category, index, wordInput.value, hintInput.value));
+    saveBtn.addEventListener("click", () => saveEntry(category, index, wordInput.value, clueInput.value));
 
     const generateBtn = document.createElement("button");
     generateBtn.type = "button";
     generateBtn.className = "secondary-button";
     generateBtn.textContent = "AI 线索";
-    generateBtn.addEventListener("click", () => regenerateHint(category, wordInput.value, hintInput, generateBtn));
+    generateBtn.addEventListener("click", () => regenerateClues(category, wordInput.value, clueInput, generateBtn));
 
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
@@ -276,7 +300,7 @@ function renderEditor(category) {
     deleteBtn.textContent = "删除";
     deleteBtn.addEventListener("click", () => deleteEntry(category, index));
 
-    row.append(wordInput, hintInput, saveBtn, generateBtn, deleteBtn);
+    row.append(wordInput, clueInput, saveBtn, generateBtn, deleteBtn);
     els.entryList.append(row);
   });
 }
@@ -337,8 +361,9 @@ async function submitTurn(event) {
 
 async function showClue() {
   if (!state.game) await newGame();
+  if (!canShowMoreClues()) return;
   setLoading(true);
-  setMessage("正在取出线索...");
+  setMessage("正在取出下一条线索...");
 
   try {
     state.game = await api("/api/clue", {
@@ -346,7 +371,8 @@ async function showClue() {
       body: JSON.stringify({ gameId: state.game.id })
     });
     localStorage.setItem("guess-word-game-id", state.game.id);
-    setMessage(`线索：${state.game.revealedHint}`);
+    const latest = state.game.history.at(-1);
+    setMessage(latest?.type === "hint" ? `线索：${latest.answer}` : "没有更多线索了。");
     renderGame();
   } catch (error) {
     setMessage(error.message, true);
@@ -399,7 +425,7 @@ async function addEntry(event) {
   event.preventDefault();
   if (!state.activeCategory) return;
   const word = els.entryWordInput.value.trim();
-  const hint = els.entryHintInput.value.trim();
+  const clues = textToClues(els.entryHintInput.value);
   if (!word) {
     setLibraryMessage("词条不能为空。", true);
     return;
@@ -407,11 +433,11 @@ async function addEntry(event) {
 
   const button = els.entryForm.querySelector("button");
   button.disabled = true;
-  button.textContent = hint ? "添加中" : "生成线索中";
+  button.textContent = clues.length ? "添加中" : "生成线索中";
   try {
     const bank = await api("/api/wordbank/entry", {
       method: "POST",
-      body: JSON.stringify({ category: state.activeCategory, word, hint })
+      body: JSON.stringify({ category: state.activeCategory, word, clues })
     });
     els.entryWordInput.value = "";
     els.entryHintInput.value = "";
@@ -425,11 +451,11 @@ async function addEntry(event) {
   }
 }
 
-async function saveEntry(category, index, word, hint) {
+async function saveEntry(category, index, word, clueText) {
   try {
     const bank = await api("/api/wordbank/entry", {
       method: "PUT",
-      body: JSON.stringify({ category, index, word, hint })
+      body: JSON.stringify({ category, index, word, clues: textToClues(clueText) })
     });
     await refreshWordbank(bank);
     setLibraryMessage("已保存。");
@@ -451,7 +477,7 @@ async function deleteEntry(category, index) {
   }
 }
 
-async function regenerateHint(category, word, hintInput, button) {
+async function regenerateClues(category, word, clueInput, button) {
   const cleanedWord = word.trim();
   if (!cleanedWord) {
     setLibraryMessage("请先填写词条。", true);
@@ -465,8 +491,8 @@ async function regenerateHint(category, word, hintInput, button) {
       method: "POST",
       body: JSON.stringify({ category, word: cleanedWord })
     });
-    hintInput.value = data.hint;
-    setLibraryMessage("AI 已生成线索，记得保存。");
+    clueInput.value = cluesToText(data.clues || []);
+    setLibraryMessage("AI 已生成 3 条分层线索，记得保存。");
   } catch (error) {
     setLibraryMessage(error.message, true);
   } finally {
