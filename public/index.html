@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>猜不到吧</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="game">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">AI 猜词游戏</p>
+            <h1>猜不到吧</h1>
+          </div>
+          <button id="newGameBtn" class="icon-button" type="button" title="新开一局" aria-label="新开一局">↻</button>
+        </header>
+
+        <section class="status-strip" aria-live="polite">
+          <div>
+            <span>当前词库</span>
+            <strong id="categoryLabel">未开始</strong>
+          </div>
+          <div>
+            <span>提问</span>
+            <strong id="questionCount">0</strong>
+          </div>
+          <div>
+            <span>猜测</span>
+            <strong id="guessCount">0</strong>
+          </div>
+        </section>
+
+        <section id="winBanner" class="win-banner hidden">
+          <span id="bannerTitle">答案正确</span>
+          <strong id="revealedWord"></strong>
+        </section>
+
+        <section class="controls">
+          <div class="mode-tabs" role="tablist" aria-label="输入模式">
+            <button id="askModeBtn" class="active" type="button">问问题</button>
+            <button id="guessModeBtn" type="button">猜答案</button>
+          </div>
+          <form id="playForm" class="play-form">
+            <input id="mainInput" autocomplete="off" placeholder="例如：它是人工制品吗？">
+            <button id="submitBtn" type="submit">提交</button>
+          </form>
+          <div class="action-row">
+            <p id="roundSummary" class="round-summary">本局已问 0 轮问题，已猜测 0 次。</p>
+            <button id="revealBtn" class="secondary-button" type="button">我猜不出来，请公布答案</button>
+          </div>
+          <p id="message" class="message"></p>
+        </section>
+
+        <section class="history-panel">
+          <div class="panel-title">
+            <h2>历史记录</h2>
+          </div>
+          <ol id="historyList" class="history-list"></ol>
+          <p id="emptyHistory" class="empty">还没有记录。先问一个问题试试。</p>
+        </section>
+      </section>
+
+      <aside class="side">
+        <section class="side-section">
+          <h2>词库</h2>
+          <div id="categoryList" class="category-list"></div>
+        </section>
+
+        <section class="side-section">
+          <h2>添加词条</h2>
+          <form id="wordForm" class="word-form">
+            <input id="categoryInput" list="categoryOptions" placeholder="词库名，例如：歌曲">
+            <datalist id="categoryOptions"></datalist>
+            <input id="wordInput" placeholder="词条，例如：七里香">
+            <button type="submit">添加</button>
+          </form>
+          <p id="wordMessage" class="message"></p>
+        </section>
+      </aside>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
