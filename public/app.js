@@ -4,6 +4,7 @@ const state = {
   gameHistory: [],
   shareRecord: null,
   shareStep: 0,
+  categorySelectionInitialized: false,
   mode: "ask",
   view: "game",
   selectedCategories: new Set(),
@@ -27,6 +28,7 @@ const els = {
   winBanner: document.querySelector("#winBanner"),
   bannerTitle: document.querySelector("#bannerTitle"),
   revealedWord: document.querySelector("#revealedWord"),
+  revealedImage: document.querySelector("#revealedImage"),
   hintBanner: document.querySelector("#hintBanner"),
   hintText: document.querySelector("#hintText"),
   roundSummary: document.querySelector("#roundSummary"),
@@ -162,6 +164,8 @@ function renderGame() {
   els.winBanner.classList.toggle("hidden", !isOver);
   els.bannerTitle.textContent = game?.isWon ? "答案正确" : "已公布答案";
   els.revealedWord.textContent = game?.revealedWord || "";
+  els.revealedImage.classList.toggle("hidden", !game?.revealedImage);
+  if (game?.revealedImage) els.revealedImage.src = game.revealedImage;
   els.mainInput.disabled = isOver;
   els.submitBtn.disabled = isOver;
   els.revealBtn.disabled = isOver;
@@ -345,8 +349,9 @@ function renderCategoryPicker() {
   state.selectedCategories.forEach((category) => {
     if (!validCategories.has(category)) state.selectedCategories.delete(category);
   });
-  if (state.selectedCategories.size === 0) {
+  if (!state.categorySelectionInitialized) {
     categories.forEach((category) => state.selectedCategories.add(category));
+    state.categorySelectionInitialized = true;
   }
 
   els.categoryList.innerHTML = "";
@@ -441,10 +446,14 @@ function renderEditor(category) {
     wordInput.value = entry.word;
     wordInput.placeholder = "词条";
 
+    const imageInput = document.createElement("input");
+    imageInput.value = entry.image || "";
+    imageInput.placeholder = "图片路径，可留空自动搜索";
+
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
     saveBtn.textContent = "保存";
-    saveBtn.addEventListener("click", () => saveEntry(category, index, wordInput.value, entry.clues));
+    saveBtn.addEventListener("click", () => saveEntry(category, index, wordInput.value, entry.clues, imageInput.value));
 
     const generateBtn = document.createElement("button");
     generateBtn.type = "button";
@@ -458,24 +467,24 @@ function renderEditor(category) {
     deleteBtn.textContent = "删除";
     deleteBtn.addEventListener("click", () => deleteEntry(category, index));
 
-    main.append(wordInput, saveBtn, generateBtn, deleteBtn);
+    main.append(wordInput, imageInput, saveBtn, generateBtn, deleteBtn);
 
     const clueList = document.createElement("div");
     clueList.className = "clue-list";
-    renderClueItems(clueList, category, index, wordInput, entry.clues || []);
+    renderClueItems(clueList, category, index, wordInput, imageInput, entry.clues || []);
 
     const addClueBtn = document.createElement("button");
     addClueBtn.type = "button";
     addClueBtn.className = "add-clue-button";
     addClueBtn.textContent = "+ 添加线索";
-    addClueBtn.addEventListener("click", () => addClueInline(clueList, category, index, wordInput.value));
+    addClueBtn.addEventListener("click", () => addClueInline(clueList, category, index, wordInput.value, imageInput.value));
 
     row.append(main, clueList, addClueBtn);
     els.entryList.append(row);
   });
 }
 
-function renderClueItems(container, category, entryIndex, wordInput, clues) {
+function renderClueItems(container, category, entryIndex, wordInput, imageInput, clues) {
   container.innerHTML = "";
   normalizeClues(clues).forEach((clue, clueIndex) => {
     const item = document.createElement("div");
@@ -504,7 +513,7 @@ function renderClueItems(container, category, entryIndex, wordInput, clues) {
     editBtn.title = "编辑线索";
     editBtn.setAttribute("aria-label", "编辑线索");
     editBtn.textContent = "✎";
-    editBtn.addEventListener("click", () => editClueInline(item, category, entryIndex, clueIndex, wordInput.value));
+    editBtn.addEventListener("click", () => editClueInline(item, category, entryIndex, clueIndex, wordInput.value, imageInput.value));
 
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
@@ -512,7 +521,7 @@ function renderClueItems(container, category, entryIndex, wordInput, clues) {
     deleteBtn.title = "删除线索";
     deleteBtn.setAttribute("aria-label", "删除线索");
     deleteBtn.textContent = "×";
-    deleteBtn.addEventListener("click", () => deleteClue(category, entryIndex, clueIndex, wordInput.value));
+    deleteBtn.addEventListener("click", () => deleteClue(category, entryIndex, clueIndex, wordInput.value, imageInput.value));
 
     item.addEventListener("dragstart", (event) => {
       event.dataTransfer.effectAllowed = "move";
@@ -530,7 +539,7 @@ function renderClueItems(container, category, entryIndex, wordInput, clues) {
       item.classList.remove("drag-over");
       const fromIndex = Number(event.dataTransfer.getData("text/plain"));
       if (!Number.isInteger(fromIndex) || fromIndex === clueIndex) return;
-      await moveClue(category, entryIndex, fromIndex, clueIndex, wordInput.value);
+      await moveClue(category, entryIndex, fromIndex, clueIndex, wordInput.value, imageInput.value);
     });
 
     item.append(handle, number, text, editBtn, deleteBtn);
@@ -669,7 +678,7 @@ async function addEntry(event) {
   try {
     const bank = await api("/api/wordbank/entry", {
       method: "POST",
-      body: JSON.stringify({ category: state.activeCategory, word, clues: [] })
+      body: JSON.stringify({ category: state.activeCategory, word, clues: [], image: "" })
     });
     els.entryWordInput.value = "";
     await refreshWordbank(bank);
@@ -682,11 +691,11 @@ async function addEntry(event) {
   }
 }
 
-async function saveEntry(category, index, word, clues) {
+async function saveEntry(category, index, word, clues, image = "") {
   try {
     const bank = await api("/api/wordbank/entry", {
       method: "PUT",
-      body: JSON.stringify({ category, index, word, clues: normalizeClues(clues) })
+      body: JSON.stringify({ category, index, word, clues: normalizeClues(clues), image })
     });
     await refreshWordbank(bank);
     setLibraryMessage("已保存。");
@@ -708,16 +717,16 @@ async function deleteEntry(category, index) {
   }
 }
 
-async function updateEntry(category, index, word, clues, message = "已保存。") {
+async function updateEntry(category, index, word, clues, message = "已保存。", image = "") {
   const bank = await api("/api/wordbank/entry", {
     method: "PUT",
-    body: JSON.stringify({ category, index, word, clues: normalizeClues(clues) })
+    body: JSON.stringify({ category, index, word, clues: normalizeClues(clues), image })
   });
   await refreshWordbank(bank);
   setLibraryMessage(message);
 }
 
-function addClueInline(container, category, entryIndex, word) {
+function addClueInline(container, category, entryIndex, word, image = "") {
   const entry = state.wordbank[category]?.[entryIndex];
   if (!entry) return;
 
@@ -744,7 +753,7 @@ function addClueInline(container, category, entryIndex, word) {
     const clue = input.value.trim();
     if (!clue) return;
     try {
-      await updateEntry(category, entryIndex, word, [...normalizeClues(entry.clues), clue], "已添加线索。");
+      await updateEntry(category, entryIndex, word, [...normalizeClues(entry.clues), clue], "已添加线索。", image);
     } catch (error) {
       setLibraryMessage(error.message, true);
     }
@@ -762,31 +771,31 @@ function addClueInline(container, category, entryIndex, word) {
   input.focus();
 }
 
-async function deleteClue(category, entryIndex, clueIndex, word) {
+async function deleteClue(category, entryIndex, clueIndex, word, image = "") {
   const entry = state.wordbank[category]?.[entryIndex];
   if (!entry) return;
   const clues = normalizeClues(entry.clues).filter((_, index) => index !== clueIndex);
   try {
-    await updateEntry(category, entryIndex, word, clues, "已删除线索。");
+    await updateEntry(category, entryIndex, word, clues, "已删除线索。", image);
   } catch (error) {
     setLibraryMessage(error.message, true);
   }
 }
 
-async function moveClue(category, entryIndex, fromIndex, toIndex, word) {
+async function moveClue(category, entryIndex, fromIndex, toIndex, word, image = "") {
   const entry = state.wordbank[category]?.[entryIndex];
   if (!entry) return;
   const clues = normalizeClues(entry.clues);
   const [moved] = clues.splice(fromIndex, 1);
   clues.splice(toIndex, 0, moved);
   try {
-    await updateEntry(category, entryIndex, word, clues, "已调整线索顺序。");
+    await updateEntry(category, entryIndex, word, clues, "已调整线索顺序。", image);
   } catch (error) {
     setLibraryMessage(error.message, true);
   }
 }
 
-function editClueInline(item, category, entryIndex, clueIndex, word) {
+function editClueInline(item, category, entryIndex, clueIndex, word, image = "") {
   const entry = state.wordbank[category]?.[entryIndex];
   if (!entry) return;
   const current = normalizeClues(entry.clues)[clueIndex] || "";
@@ -815,7 +824,7 @@ function editClueInline(item, category, entryIndex, clueIndex, word) {
     const clues = normalizeClues(entry.clues);
     clues[clueIndex] = next;
     try {
-      await updateEntry(category, entryIndex, word, clues, "已更新线索。");
+      await updateEntry(category, entryIndex, word, clues, "已更新线索。", image);
     } catch (error) {
       setLibraryMessage(error.message, true);
     }
@@ -835,6 +844,7 @@ function editClueInline(item, category, entryIndex, clueIndex, word) {
 
 async function regenerateClues(category, index, word, button) {
   const cleanedWord = word.trim();
+  const entry = state.wordbank[category]?.[index];
   if (!cleanedWord) {
     setLibraryMessage("请先填写词条。", true);
     return;
@@ -847,7 +857,7 @@ async function regenerateClues(category, index, word, button) {
       method: "POST",
       body: JSON.stringify({ category, word: cleanedWord })
     });
-    await updateEntry(category, index, cleanedWord, data.clues || [], "AI 已生成并保存 3 条分层线索。");
+    await updateEntry(category, index, cleanedWord, data.clues || [], "AI 已生成并保存 3 条分层线索。", entry?.image || "");
   } catch (error) {
     setLibraryMessage(error.message, true);
   } finally {

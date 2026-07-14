@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -13,10 +13,14 @@ loadEnv(path.join(__dirname, ".env"));
 const PORT = Number(process.env.PORT || 5177);
 const API_KEY = process.env.DEEPSEEK_API_KEY || "";
 const MODEL = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
+const FALLBACK_MODEL = process.env.DEEPSEEK_FALLBACK_MODEL || MODEL;
+const ANSWER_VOTES = Math.max(1, Number(process.env.ANSWER_VOTES || 3));
 const API_URL = "https://api.deepseek.com/chat/completions";
 const WORD_BANK_PATH = path.join(__dirname, "data", "wordbank.json");
 const GAME_HISTORY_PATH = path.join(__dirname, "data", "game-history.json");
 const PUBLIC_DIR = path.join(__dirname, "public");
+const IMAGE_DIR = path.join(PUBLIC_DIR, "images");
+const PLACEHOLDER_IMAGE = "/images/placeholder.svg";
 const games = new Map();
 
 function loadEnv(envPath) {
@@ -70,15 +74,16 @@ function normalizeWordBank(rawBank) {
 
 function normalizeEntry(entry) {
   if (typeof entry === "string") {
-    return { word: entry.trim(), clues: [] };
+    return { word: entry.trim(), clues: [], image: "" };
   }
 
   const word = String(entry?.word || "").trim();
   const clues = Array.isArray(entry?.clues)
     ? entry.clues.map(cleanClue).filter(Boolean)
     : splitClues(entry?.hint);
+  const image = String(entry?.image || "").trim();
 
-  return { word, clues };
+  return { word, clues, image };
 }
 
 function splitClues(value) {
@@ -92,6 +97,95 @@ function cleanClue(value) {
   return String(value || "")
     .replace(/^\s*(?:线索\s*)?\d+\s*[.、:：-]\s*/, "")
     .trim();
+}
+
+function safePathSegment(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_")
+    .replace(/\s+/g, "_")
+    .slice(0, 80) || "unknown";
+}
+
+function contentTypeToExtension(contentType) {
+  if (contentType.includes("png")) return "png";
+  if (contentType.includes("webp")) return "webp";
+  if (contentType.includes("gif")) return "gif";
+  return "jpg";
+}
+
+async function ensurePlaceholderImage() {
+  const filePath = path.join(IMAGE_DIR, "placeholder.svg");
+  if (existsSync(filePath)) return PLACEHOLDER_IMAGE;
+  await mkdir(IMAGE_DIR, { recursive: true });
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640">
+  <rect width="960" height="640" fill="#edf7f5"/>
+  <rect x="90" y="90" width="780" height="460" rx="24" fill="#ffffff" stroke="#b7dfd6" stroke-width="6"/>
+  <circle cx="330" cy="260" r="70" fill="#0d7c66" opacity=".18"/>
+  <path d="M190 470l190-170 120 110 90-80 180 140H190z" fill="#0d7c66" opacity=".35"/>
+  <text x="480" y="580" font-family="Arial, sans-serif" font-size="34" text-anchor="middle" fill="#095f50">No image yet</text>
+</svg>`;
+  await writeFile(filePath, svg, "utf8");
+  return PLACEHOLDER_IMAGE;
+}
+
+async function searchWikimediaImage(word, category) {
+  const query = `${word} ${category}`.trim();
+  const searchUrl = new URL("https://commons.wikimedia.org/w/api.php");
+  searchUrl.search = new URLSearchParams({
+    action: "query",
+    generator: "search",
+    gsrsearch: query,
+    gsrnamespace: "6",
+    gsrlimit: "1",
+    prop: "imageinfo",
+    iiprop: "url|mime",
+    iiurlwidth: "900",
+    format: "json",
+    origin: "*"
+  }).toString();
+
+  const response = await fetch(searchUrl, { headers: { "User-Agent": "CantGuessItHuh/0.1" } });
+  if (!response.ok) return null;
+  const data = await response.json();
+  const pages = Object.values(data?.query?.pages || {});
+  const imageInfo = pages[0]?.imageinfo?.[0];
+  return imageInfo?.thumburl || imageInfo?.url || null;
+}
+
+async function cacheImageForEntry(category, entry) {
+  if (entry.image && entry.image.startsWith("/images/")) return entry.image;
+  const categoryDir = safePathSegment(category);
+  const wordName = safePathSegment(entry.word);
+  const diskDir = path.join(IMAGE_DIR, categoryDir);
+  const publicDir = `/images/${encodeURIComponent(categoryDir)}`;
+
+  for (const ext of ["jpg", "jpeg", "png", "webp", "gif"]) {
+    const existing = path.join(diskDir, `${wordName}.${ext}`);
+    if (existsSync(existing)) return `${publicDir}/${encodeURIComponent(`${wordName}.${ext}`)}`;
+  }
+
+  try {
+    const imageUrl = await searchWikimediaImage(entry.word, category);
+    if (!imageUrl) return await ensurePlaceholderImage();
+    const imageResponse = await fetch(imageUrl, { headers: { "User-Agent": "CantGuessItHuh/0.1" } });
+    if (!imageResponse.ok) return await ensurePlaceholderImage();
+    const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
+    const ext = contentTypeToExtension(contentType);
+    const fileName = `${wordName}.${ext}`;
+    await mkdir(diskDir, { recursive: true });
+    const buffer = Buffer.from(await imageResponse.arrayBuffer());
+    await writeFile(path.join(diskDir, fileName), buffer);
+    return `${publicDir}/${encodeURIComponent(fileName)}`;
+  } catch {
+    return await ensurePlaceholderImage();
+  }
+}
+
+async function ensureGameImage(game) {
+  if (game.image) return game.image;
+  game.image = await cacheImageForEntry(game.category, { word: game.word, image: game.image });
+  return game.image;
 }
 
 function sendJson(res, status, data) {
@@ -141,6 +235,7 @@ function publicGame(game) {
     revealedClues: shownClues,
     revealedHint: shownClues.join(" / ") || null,
     revealedWord: game.isWon || game.isRevealed ? game.word : null,
+    revealedImage: game.isWon || game.isRevealed ? game.image || PLACEHOLDER_IMAGE : null,
     history: game.history
   };
 }
@@ -160,6 +255,7 @@ async function archiveGame(game) {
     gameId: game.id,
     category: game.category,
     word: game.word,
+    image: game.image || PLACEHOLDER_IMAGE,
     startedAt: game.startedAt,
     endedAt: new Date().toISOString(),
     outcome: summarizeOutcome(game),
@@ -195,6 +291,7 @@ async function startGame(categories) {
     id: crypto.randomUUID(),
     word: entry.word,
     clues: entry.clues,
+    image: entry.image,
     clueIndex: 0,
     category,
     startedAt: new Date().toISOString(),
@@ -206,9 +303,18 @@ async function startGame(categories) {
   return publicGame(game);
 }
 
-async function askDeepSeek(messages, maxTokens = 80) {
+async function askDeepSeek(messages, maxTokens = 80, options = {}) {
   if (!API_KEY) {
     throw new Error("缺少 DEEPSEEK_API_KEY，请在 .env 中填写。");
+  }
+  const body = {
+    model: options.model || MODEL,
+    messages,
+    max_tokens: maxTokens,
+    stream: false
+  };
+  if (options.thinking !== "enabled") {
+    body.thinking = { type: "disabled" };
   }
 
   const response = await fetch(API_URL, {
@@ -217,13 +323,7 @@ async function askDeepSeek(messages, maxTokens = 80) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${API_KEY}`
     },
-    body: JSON.stringify({
-      model: MODEL,
-      messages,
-      thinking: { type: "disabled" },
-      max_tokens: maxTokens,
-      stream: false
-    })
+    body: JSON.stringify(body)
   });
 
   if (!response.ok) {
@@ -250,7 +350,7 @@ function strictYesNoMaybe(text) {
   return "是也不是";
 }
 
-async function answerQuestion(game, question) {
+function buildQuestionMessages(game, question) {
   const compactHistory = game.history
     .slice(-12)
     .map((item) => {
@@ -260,7 +360,7 @@ async function answerQuestion(game, question) {
     })
     .join("\n");
 
-  const content = await askDeepSeek([
+  return [
     {
       role: "system",
       content:
@@ -270,9 +370,42 @@ async function answerQuestion(game, question) {
       role: "user",
       content: `隐藏答案：${game.word}\n所属题库：${game.category}\n已公布线索：${revealedClues(game).join("；") || "暂无"}\n最近历史：\n${compactHistory || "暂无"}\n\n玩家问题：${question}\n请只输出：是、否、是也不是。`
     }
-  ]);
+  ];
+}
+
+async function answerQuestionOnce(game, question) {
+  const content = await askDeepSeek(buildQuestionMessages(game, question));
 
   return strictYesNoMaybe(content);
+}
+
+async function fallbackAnswerQuestion(game, question, votes) {
+  const content = await askDeepSeek([
+    {
+      role: "system",
+      content:
+        "你是中文猜词游戏的最终裁判。你知道隐藏答案，但绝不能透露答案，也不能解释。玩家问的是关于隐藏答案的是非问题。你会看到多个普通模型的回答投票；如果投票不一致，请基于隐藏答案、题库语境、已公布线索和玩家问题做最终裁决。只能输出：是、否、是也不是。"
+    },
+    {
+      role: "user",
+      content: `隐藏答案：${game.word}\n所属题库：${game.category}\n已公布线索：${revealedClues(game).join("；") || "暂无"}\n玩家问题：${question}\n普通模型投票：${votes.join("、")}\n请只输出：是、否、是也不是。`
+    }
+  ], 800, { model: FALLBACK_MODEL, thinking: "enabled" });
+  return strictYesNoMaybe(content);
+}
+
+async function answerQuestion(game, question) {
+  const votes = [];
+  for (let index = 0; index < ANSWER_VOTES; index += 1) {
+    votes.push(await answerQuestionOnce(game, question));
+  }
+
+  const uniqueVotes = [...new Set(votes)];
+  const answer = uniqueVotes.length === 1
+    ? uniqueVotes[0]
+    : await fallbackAnswerQuestion(game, question, votes);
+
+  return { answer, votes, fallbackUsed: uniqueVotes.length !== 1 };
 }
 
 async function judgeGuess(game, guess) {
@@ -361,7 +494,7 @@ async function handleApi(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   if (req.method === "GET" && url.pathname === "/api/health") {
-    sendJson(res, 200, { ok: true, model: MODEL, hasKey: Boolean(API_KEY) });
+    sendJson(res, 200, { ok: true, model: MODEL, fallbackModel: FALLBACK_MODEL, answerVotes: ANSWER_VOTES, hasKey: Boolean(API_KEY) });
     return;
   }
 
@@ -406,6 +539,7 @@ async function handleApi(req, res) {
     const category = requireCategoryName(body.category);
     const word = String(body.word || "").trim();
     let clues = cluesFromBody(body);
+    const image = String(body.image || "").trim();
     if (!word) {
       sendJson(res, 400, { error: "词条不能为空。" });
       return;
@@ -413,7 +547,7 @@ async function handleApi(req, res) {
     const bank = await readWordBank();
     bank[category] ||= [];
     if (!clues.length) clues = await generateClues(word, category);
-    bank[category].push({ word, clues });
+    bank[category].push({ word, clues, image });
     await writeWordBank(bank);
     sendJson(res, 200, bank);
     return;
@@ -424,6 +558,7 @@ async function handleApi(req, res) {
     const category = requireCategoryName(body.category);
     const word = String(body.word || "").trim();
     const clues = cluesFromBody(body);
+    const image = String(body.image || "").trim();
     if (!word) {
       sendJson(res, 400, { error: "词条不能为空。" });
       return;
@@ -435,7 +570,7 @@ async function handleApi(req, res) {
       return;
     }
     const index = requireEntryIndex(body.index, entries);
-    entries[index] = { word, clues };
+    entries[index] = { word, clues, image };
     await writeWordBank(bank);
     sendJson(res, 200, bank);
     return;
@@ -498,11 +633,13 @@ async function handleApi(req, res) {
       sendJson(res, 400, { error: "这局已经结束，请开新局。" });
       return;
     }
-    const answer = await answerQuestion(game, question);
+    const answerResult = await answerQuestion(game, question);
     game.history.push({
       type: "question",
       text: question,
-      answer,
+      answer: answerResult.answer,
+      votes: answerResult.votes,
+      fallbackUsed: answerResult.fallbackUsed,
       at: new Date().toISOString()
     });
     sendJson(res, 200, publicGame(game));
@@ -529,7 +666,10 @@ async function handleApi(req, res) {
       correct,
       at: new Date().toISOString()
     });
-    if (correct) await archiveGame(game);
+    if (correct) {
+      await ensureGameImage(game);
+      await archiveGame(game);
+    }
     sendJson(res, 200, publicGame(game));
     return;
   }
@@ -564,6 +704,7 @@ async function handleApi(req, res) {
     }
     if (!game.isWon && !game.isRevealed) {
       game.isRevealed = true;
+      await ensureGameImage(game);
       game.history.push({
         type: "reveal",
         text: "我猜不出来，请公布答案",

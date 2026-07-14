@@ -217,6 +217,15 @@ h2 {
   line-height: 1.45;
 }
 
+.revealed-image {
+  width: min(220px, 42vw);
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #bde8cd;
+  background: white;
+}
+
 .hint-banner strong {
   display: grid;
   gap: 4px;
@@ -614,7 +623,7 @@ button:disabled {
 
 .entry-main {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) 76px 92px 76px;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(180px, 1fr) 76px 92px 76px;
   gap: 8px;
   align-items: center;
 }
