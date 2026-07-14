@@ -268,12 +268,6 @@ h2 {
   flex-wrap: wrap;
 }
 
-.round-summary {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-weight: 700;
-}
-
 input,
 textarea {
   width: 100%;
@@ -357,6 +351,10 @@ button:disabled {
   margin: 0;
   color: var(--muted);
   font-size: 14px;
+}
+
+.message:empty {
+  display: none;
 }
 
 .message.error {
@@ -552,11 +550,49 @@ button:disabled {
   gap: 10px;
 }
 
+.entry-pager {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 10px;
+}
+
+.entry-page-size,
+.entry-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.entry-page-size span,
+.entry-page-info,
+.entry-page-actions span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.entry-page-size select {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  padding: 0 10px;
+  font-weight: 800;
+}
+
+.entry-page-info {
+  justify-self: center;
+}
+
 .entry-row {
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
-  gap: 12px;
-  padding: 12px;
+  grid-template-columns: 240px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  padding: 16px;
 }
 
 .entry-image-panel {
@@ -567,7 +603,7 @@ button:disabled {
 
 .entry-image-preview {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -582,6 +618,23 @@ button:disabled {
 .image-path-input {
   min-height: 38px;
   font-size: 12px;
+}
+
+.field-block {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.word-field {
+  max-width: 340px;
 }
 
 .hidden-file-input {
@@ -677,19 +730,24 @@ button:disabled {
 .entry-main {
   grid-column: 2;
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) 76px 92px 76px;
+  grid-template-columns: minmax(180px, 340px) 76px 92px 76px;
   gap: 8px;
-  align-items: center;
+  align-items: end;
+}
+
+.entry-clues {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
 }
 
 .clue-list {
-  grid-column: 2;
   display: grid;
   gap: 8px;
 }
 
 .add-clue-button {
-  grid-column: 2;
+  justify-self: start;
 }
 
 .clue-chip {
@@ -814,6 +872,7 @@ button:disabled {
   .play-form,
   .inline-form,
   .entry-form,
+  .entry-pager,
   .entry-row,
   .entry-main,
   .clue-chip,
@@ -822,9 +881,14 @@ button:disabled {
   }
 
   .entry-main,
+  .entry-clues,
   .clue-list,
   .add-clue-button {
     grid-column: 1;
+  }
+
+  .entry-page-info {
+    justify-self: start;
   }
 
   .status-strip div {

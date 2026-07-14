@@ -8,7 +8,9 @@ const state = {
   mode: "ask",
   view: "game",
   selectedCategories: new Set(),
-  activeCategory: null
+  activeCategory: null,
+  entryPageSize: 10,
+  entryPages: {}
 };
 
 const els = {
@@ -31,7 +33,6 @@ const els = {
   revealedImage: document.querySelector("#revealedImage"),
   hintBanner: document.querySelector("#hintBanner"),
   hintText: document.querySelector("#hintText"),
-  roundSummary: document.querySelector("#roundSummary"),
   askModeBtn: document.querySelector("#askModeBtn"),
   guessModeBtn: document.querySelector("#guessModeBtn"),
   playForm: document.querySelector("#playForm"),
@@ -55,6 +56,7 @@ const els = {
   entryForm: document.querySelector("#entryForm"),
   entryWordInput: document.querySelector("#entryWordInput"),
   libraryMessage: document.querySelector("#libraryMessage"),
+  entryPager: document.querySelector("#entryPager"),
   entryList: document.querySelector("#entryList"),
   refreshHistoryBtn: document.querySelector("#refreshHistoryBtn"),
   gameHistoryList: document.querySelector("#gameHistoryList"),
@@ -83,6 +85,10 @@ function setMessage(text, isError = false) {
 function setLibraryMessage(text, isError = false) {
   els.libraryMessage.textContent = text;
   els.libraryMessage.classList.toggle("error", isError);
+}
+
+function clearLibraryMessage() {
+  setLibraryMessage("");
 }
 
 function isGameOver() {
@@ -150,7 +156,6 @@ function renderGame() {
   els.categoryLabel.textContent = game ? game.category : "未开始";
   els.questionCount.textContent = questionTotal;
   els.guessCount.textContent = guessTotal;
-  els.roundSummary.textContent = `本局已问 ${questionTotal} 轮问题，已猜测 ${guessTotal} 次。`;
   els.historyList.innerHTML = "";
   els.emptyHistory.classList.toggle("hidden", history.length > 0);
 
@@ -415,6 +420,8 @@ function renderLibraryCards() {
     card.type = "button";
     card.addEventListener("click", () => {
       state.activeCategory = category;
+      state.entryPages[category] = 1;
+      clearLibraryMessage();
       renderEditor(category);
     });
 
@@ -429,24 +436,112 @@ function renderLibraryCards() {
   });
 }
 
+function entryPageFor(category, entryCount) {
+  const totalPages = Math.max(1, Math.ceil(entryCount / state.entryPageSize));
+  const current = Number(state.entryPages[category] || 1);
+  const page = Math.min(Math.max(1, current), totalPages);
+  state.entryPages[category] = page;
+  return { page, totalPages };
+}
+
+function renderEntryPager(category, entryCount, page, totalPages) {
+  els.entryPager.innerHTML = "";
+  if (!entryCount) {
+    els.entryPager.classList.add("hidden");
+    return;
+  }
+
+  els.entryPager.classList.remove("hidden");
+
+  const sizeGroup = document.createElement("div");
+  sizeGroup.className = "entry-page-size";
+
+  const sizeLabel = document.createElement("span");
+  sizeLabel.textContent = "每页";
+
+  const sizeSelect = document.createElement("select");
+  [5, 10, 20].forEach((size) => {
+    const option = document.createElement("option");
+    option.value = String(size);
+    option.textContent = `${size} 条`;
+    option.selected = size === state.entryPageSize;
+    sizeSelect.append(option);
+  });
+  sizeSelect.addEventListener("change", () => {
+    state.entryPageSize = Number(sizeSelect.value);
+    state.entryPages[category] = 1;
+    renderEditor(category);
+  });
+
+  sizeGroup.append(sizeLabel, sizeSelect);
+
+  const start = (page - 1) * state.entryPageSize + 1;
+  const end = Math.min(entryCount, page * state.entryPageSize);
+  const info = document.createElement("span");
+  info.className = "entry-page-info";
+  info.textContent = `${start}-${end} / ${entryCount}`;
+
+  const actions = document.createElement("div");
+  actions.className = "entry-page-actions";
+
+  const prevBtn = document.createElement("button");
+  prevBtn.type = "button";
+  prevBtn.className = "text-button";
+  prevBtn.textContent = "上一页";
+  prevBtn.disabled = page <= 1;
+  prevBtn.addEventListener("click", () => {
+    state.entryPages[category] = page - 1;
+    renderEditor(category);
+  });
+
+  const pageText = document.createElement("span");
+  pageText.textContent = `${page} / ${totalPages}`;
+
+  const nextBtn = document.createElement("button");
+  nextBtn.type = "button";
+  nextBtn.className = "text-button";
+  nextBtn.textContent = "下一页";
+  nextBtn.disabled = page >= totalPages;
+  nextBtn.addEventListener("click", () => {
+    state.entryPages[category] = page + 1;
+    renderEditor(category);
+  });
+
+  actions.append(prevBtn, pageText, nextBtn);
+  els.entryPager.append(sizeGroup, info, actions);
+}
+
 function renderEditor(category) {
   const entries = state.wordbank[category] || [];
+  const { page, totalPages } = entryPageFor(category, entries.length);
+  const startIndex = (page - 1) * state.entryPageSize;
+  const visibleEntries = entries.slice(startIndex, startIndex + state.entryPageSize);
   els.libraryMain.classList.add("hidden");
   els.libraryEditor.classList.remove("hidden");
   els.editorTitle.textContent = category;
   els.editorMeta.textContent = `${entries.length} 个词条`;
+  renderEntryPager(category, entries.length, page, totalPages);
   els.entryList.innerHTML = "";
 
-  entries.forEach((entry, index) => {
+  visibleEntries.forEach((entry, offset) => {
+    const index = startIndex + offset;
     const row = document.createElement("article");
     row.className = "entry-row";
 
     const main = document.createElement("div");
     main.className = "entry-main";
 
+    const wordField = document.createElement("label");
+    wordField.className = "field-block word-field";
+
+    const wordLabel = document.createElement("span");
+    wordLabel.className = "field-label";
+    wordLabel.textContent = "词条名字：";
+
     const wordInput = document.createElement("input");
     wordInput.value = entry.word;
     wordInput.placeholder = "词条";
+    wordField.append(wordLabel, wordInput);
 
     const imageInput = document.createElement("input");
     imageInput.className = "image-path-input";
@@ -500,7 +595,14 @@ function renderEditor(category) {
     deleteBtn.textContent = "删除";
     deleteBtn.addEventListener("click", () => deleteEntry(category, index));
 
-    main.append(wordInput, saveBtn, generateBtn, deleteBtn);
+    main.append(wordField, saveBtn, generateBtn, deleteBtn);
+
+    const clueSection = document.createElement("section");
+    clueSection.className = "entry-clues";
+
+    const clueLabel = document.createElement("p");
+    clueLabel.className = "field-label";
+    clueLabel.textContent = "词条线索：";
 
     const clueList = document.createElement("div");
     clueList.className = "clue-list";
@@ -512,7 +614,8 @@ function renderEditor(category) {
     addClueBtn.textContent = "+ 添加线索";
     addClueBtn.addEventListener("click", () => addClueInline(clueList, category, index, wordInput.value, imageInput.value));
 
-    row.append(imagePanel, main, clueList, addClueBtn);
+    clueSection.append(clueLabel, clueList, addClueBtn);
+    row.append(imagePanel, main, clueSection);
     els.entryList.append(row);
   });
 }
@@ -689,6 +792,7 @@ async function createCategory(event) {
     els.newCategoryInput.value = "";
     state.selectedCategories.add(category);
     state.activeCategory = category;
+    state.entryPages[category] = 1;
     await refreshWordbank(bank);
     setLibraryMessage(`已新建题库：${category}`);
   } catch (error) {
@@ -714,6 +818,8 @@ async function addEntry(event) {
       body: JSON.stringify({ category: state.activeCategory, word, clues: [], image: "" })
     });
     els.entryWordInput.value = "";
+    const entryCount = bank[state.activeCategory]?.length || 0;
+    state.entryPages[state.activeCategory] = Math.max(1, Math.ceil(entryCount / state.entryPageSize));
     await refreshWordbank(bank);
     setLibraryMessage(`已添加：${word}`);
   } catch (error) {
@@ -782,7 +888,8 @@ async function updateEntry(category, index, word, clues, message = "已保存。
     body: JSON.stringify({ category, index, word, clues: normalizeClues(clues), image })
   });
   await refreshWordbank(bank);
-  setLibraryMessage(message);
+  if (message) setLibraryMessage(message);
+  else clearLibraryMessage();
 }
 
 function addClueInline(container, category, entryIndex, word, image = "") {
@@ -812,7 +919,7 @@ function addClueInline(container, category, entryIndex, word, image = "") {
     const clue = input.value.trim();
     if (!clue) return;
     try {
-      await updateEntry(category, entryIndex, word, [...normalizeClues(entry.clues), clue], "已添加线索。", image);
+      await updateEntry(category, entryIndex, word, [...normalizeClues(entry.clues), clue], "", image);
     } catch (error) {
       setLibraryMessage(error.message, true);
     }
@@ -835,7 +942,7 @@ async function deleteClue(category, entryIndex, clueIndex, word, image = "") {
   if (!entry) return;
   const clues = normalizeClues(entry.clues).filter((_, index) => index !== clueIndex);
   try {
-    await updateEntry(category, entryIndex, word, clues, "已删除线索。", image);
+    await updateEntry(category, entryIndex, word, clues, "", image);
   } catch (error) {
     setLibraryMessage(error.message, true);
   }
@@ -848,7 +955,7 @@ async function moveClue(category, entryIndex, fromIndex, toIndex, word, image = 
   const [moved] = clues.splice(fromIndex, 1);
   clues.splice(toIndex, 0, moved);
   try {
-    await updateEntry(category, entryIndex, word, clues, "已调整线索顺序。", image);
+    await updateEntry(category, entryIndex, word, clues, "", image);
   } catch (error) {
     setLibraryMessage(error.message, true);
   }
@@ -883,7 +990,7 @@ function editClueInline(item, category, entryIndex, clueIndex, word, image = "")
     const clues = normalizeClues(entry.clues);
     clues[clueIndex] = next;
     try {
-      await updateEntry(category, entryIndex, word, clues, "已更新线索。", image);
+      await updateEntry(category, entryIndex, word, clues, "", image);
     } catch (error) {
       setLibraryMessage(error.message, true);
     }
