@@ -110,8 +110,19 @@ function safePathSegment(value) {
 function contentTypeToExtension(contentType) {
   if (contentType.includes("png")) return "png";
   if (contentType.includes("webp")) return "webp";
+  if (contentType.includes("svg")) return "svg";
   if (contentType.includes("gif")) return "gif";
   return "jpg";
+}
+
+function isAllowedImageType(contentType) {
+  return [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/svg+xml"
+  ].includes(String(contentType || "").toLowerCase());
 }
 
 async function ensurePlaceholderImage() {
@@ -209,6 +220,50 @@ async function parseBody(req) {
     if (body.length > 1024 * 1024) throw new Error("请求体太大。");
   }
   return body ? JSON.parse(body) : {};
+}
+
+async function parseMultipartBody(req) {
+  const contentType = req.headers["content-type"] || "";
+  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+  if (!boundaryMatch) throw new Error("缺少上传边界。");
+  const boundary = `--${boundaryMatch[1] || boundaryMatch[2]}`;
+  const chunks = [];
+  let total = 0;
+  for await (const chunk of req) {
+    chunks.push(chunk);
+    total += chunk.length;
+    if (total > 10 * 1024 * 1024) throw new Error("图片不能超过 10MB。");
+  }
+
+  const raw = Buffer.concat(chunks).toString("latin1");
+  const fields = {};
+  const files = {};
+  for (const part of raw.split(boundary)) {
+    if (!part || part === "--\r\n" || part === "--") continue;
+    const cleanPart = part.replace(/^\r\n/, "").replace(/\r\n--$/, "");
+    const divider = cleanPart.indexOf("\r\n\r\n");
+    if (divider === -1) continue;
+    const headerText = cleanPart.slice(0, divider);
+    let value = cleanPart.slice(divider + 4);
+    if (value.endsWith("\r\n")) value = value.slice(0, -2);
+
+    const disposition = headerText.match(/content-disposition:\s*form-data;([^\r\n]+)/i)?.[1] || "";
+    const name = disposition.match(/name="([^"]+)"/i)?.[1];
+    const filename = disposition.match(/filename="([^"]*)"/i)?.[1];
+    const fileType = headerText.match(/content-type:\s*([^\r\n]+)/i)?.[1]?.trim() || "";
+    if (!name) continue;
+
+    if (filename) {
+      files[name] = {
+        filename,
+        contentType: fileType,
+        buffer: Buffer.from(value, "latin1")
+      };
+    } else {
+      fields[name] = Buffer.from(value, "latin1").toString("utf8");
+    }
+  }
+  return { fields, files };
 }
 
 function normalizeAnswer(text) {
@@ -481,7 +536,12 @@ async function serveStatic(req, res) {
       ".css": "text/css; charset=utf-8",
       ".js": "application/javascript; charset=utf-8",
       ".json": "application/json; charset=utf-8",
-      ".svg": "image/svg+xml"
+      ".svg": "image/svg+xml",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".webp": "image/webp",
+      ".gif": "image/gif"
     };
     res.writeHead(200, { "Content-Type": types[ext] || "application/octet-stream" });
     res.end(data);
@@ -587,6 +647,39 @@ async function handleApi(req, res) {
     }
     const index = requireEntryIndex(body.index, entries);
     entries.splice(index, 1);
+    await writeWordBank(bank);
+    sendJson(res, 200, bank);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/wordbank/image") {
+    const { fields, files } = await parseMultipartBody(req);
+    const category = requireCategoryName(fields.category);
+    const bank = await readWordBank();
+    const entries = bank[category];
+    if (!entries) {
+      sendJson(res, 404, { error: "题库不存在。" });
+      return;
+    }
+    const index = requireEntryIndex(fields.index, entries);
+    const file = files.image;
+    if (!file?.buffer?.length) {
+      sendJson(res, 400, { error: "请选择一张图片。" });
+      return;
+    }
+    if (!isAllowedImageType(file.contentType)) {
+      sendJson(res, 400, { error: "只支持 jpg、png、webp、gif 或 svg 图片。" });
+      return;
+    }
+
+    const entry = entries[index];
+    const ext = contentTypeToExtension(file.contentType);
+    const categoryDir = safePathSegment(category);
+    const fileName = `${safePathSegment(entry.word)}.${ext}`;
+    const diskDir = path.join(IMAGE_DIR, categoryDir);
+    await mkdir(diskDir, { recursive: true });
+    await writeFile(path.join(diskDir, fileName), file.buffer);
+    entry.image = `/images/${encodeURIComponent(categoryDir)}/${encodeURIComponent(fileName)}`;
     await writeWordBank(bank);
     sendJson(res, 200, bank);
     return;

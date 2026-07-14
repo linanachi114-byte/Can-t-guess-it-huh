@@ -99,7 +99,7 @@
       </section>
 
       <section id="libraryView" class="library-view hidden">
-        <section class="library-main">
+        <section id="libraryMain" class="library-main">
           <div class="panel-title">
             <div>
               <h2>题库</h2>
@@ -115,12 +115,12 @@
         </section>
 
         <section id="libraryEditor" class="library-editor hidden">
-          <div class="panel-title">
+          <div class="panel-title editor-heading">
+            <button id="closeEditorBtn" class="back-button" type="button" title="返回题库" aria-label="返回题库">←</button>
             <div>
               <h2 id="editorTitle">题库详情</h2>
               <p id="editorMeta" class="subtle"></p>
             </div>
-            <button id="closeEditorBtn" class="text-button" type="button">返回题库</button>
           </div>
 
           <form id="entryForm" class="entry-form">

@@ -46,6 +46,7 @@ const els = {
   categoryList: document.querySelector("#categoryList"),
   categoryForm: document.querySelector("#categoryForm"),
   newCategoryInput: document.querySelector("#newCategoryInput"),
+  libraryMain: document.querySelector("#libraryMain"),
   libraryCards: document.querySelector("#libraryCards"),
   libraryEditor: document.querySelector("#libraryEditor"),
   editorTitle: document.querySelector("#editorTitle"),
@@ -401,6 +402,7 @@ function renderLibrary() {
     renderEditor(state.activeCategory);
   } else {
     state.activeCategory = null;
+    els.libraryMain.classList.remove("hidden");
     els.libraryEditor.classList.add("hidden");
   }
 }
@@ -408,7 +410,6 @@ function renderLibrary() {
 function renderLibraryCards() {
   els.libraryCards.innerHTML = "";
   Object.entries(state.wordbank).forEach(([category, entries]) => {
-    const clueTotal = entries.reduce((sum, entry) => sum + (entry.clues?.length || 0), 0);
     const card = document.createElement("button");
     card.className = "library-card";
     card.type = "button";
@@ -420,7 +421,7 @@ function renderLibraryCards() {
     const title = document.createElement("strong");
     title.textContent = category;
     const meta = document.createElement("span");
-    meta.textContent = `${entries.length} 个词条 · ${clueTotal} 条线索`;
+    meta.textContent = `${entries.length} 个词条`;
     const sample = document.createElement("small");
     sample.textContent = entries.slice(0, 3).map((entry) => entry.word).join("、") || "空题库";
     card.append(title, meta, sample);
@@ -430,9 +431,10 @@ function renderLibraryCards() {
 
 function renderEditor(category) {
   const entries = state.wordbank[category] || [];
+  els.libraryMain.classList.add("hidden");
   els.libraryEditor.classList.remove("hidden");
   els.editorTitle.textContent = category;
-  els.editorMeta.textContent = `${entries.length} 个词条。拖动线索左侧的三横线可以调整公布顺序。`;
+  els.editorMeta.textContent = `${entries.length} 个词条`;
   els.entryList.innerHTML = "";
 
   entries.forEach((entry, index) => {
@@ -447,8 +449,39 @@ function renderEditor(category) {
     wordInput.placeholder = "词条";
 
     const imageInput = document.createElement("input");
+    imageInput.className = "image-path-input";
     imageInput.value = entry.image || "";
     imageInput.placeholder = "图片路径，可留空自动搜索";
+
+    const imagePanel = document.createElement("div");
+    imagePanel.className = "entry-image-panel";
+
+    const imagePreview = document.createElement("img");
+    imagePreview.className = "entry-image-preview";
+    imagePreview.src = entry.image || "/images/placeholder.svg";
+    imagePreview.alt = `${entry.word} 图片`;
+
+    const imageTools = document.createElement("div");
+    imageTools.className = "entry-image-tools";
+
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/png,image/jpeg,image/webp,image/gif,image/svg+xml";
+    fileInput.className = "hidden-file-input";
+
+    const uploadBtn = document.createElement("button");
+    uploadBtn.type = "button";
+    uploadBtn.className = "secondary-button";
+    uploadBtn.textContent = "上传图片";
+    uploadBtn.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (file) uploadEntryImage(category, index, file, uploadBtn);
+      fileInput.value = "";
+    });
+
+    imageTools.append(imageInput, uploadBtn, fileInput);
+    imagePanel.append(imagePreview, imageTools);
 
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
@@ -467,7 +500,7 @@ function renderEditor(category) {
     deleteBtn.textContent = "删除";
     deleteBtn.addEventListener("click", () => deleteEntry(category, index));
 
-    main.append(wordInput, imageInput, saveBtn, generateBtn, deleteBtn);
+    main.append(wordInput, saveBtn, generateBtn, deleteBtn);
 
     const clueList = document.createElement("div");
     clueList.className = "clue-list";
@@ -479,7 +512,7 @@ function renderEditor(category) {
     addClueBtn.textContent = "+ 添加线索";
     addClueBtn.addEventListener("click", () => addClueInline(clueList, category, index, wordInput.value, imageInput.value));
 
-    row.append(main, clueList, addClueBtn);
+    row.append(imagePanel, main, clueList, addClueBtn);
     els.entryList.append(row);
   });
 }
@@ -691,6 +724,32 @@ async function addEntry(event) {
   }
 }
 
+async function uploadEntryImage(category, index, file, button) {
+  button.disabled = true;
+  button.textContent = "上传中";
+  try {
+    const formData = new FormData();
+    formData.append("category", category);
+    formData.append("index", String(index));
+    formData.append("image", file);
+
+    const response = await fetch("/api/wordbank/image", {
+      method: "POST",
+      body: formData
+    });
+    const bank = await response.json();
+    if (!response.ok) throw new Error(bank.error || "上传失败");
+
+    await refreshWordbank(bank);
+    setLibraryMessage("图片已更新。");
+  } catch (error) {
+    setLibraryMessage(error.message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = "上传图片";
+  }
+}
+
 async function saveEntry(category, index, word, clues, image = "") {
   try {
     const bank = await api("/api/wordbank/entry", {
@@ -899,6 +958,7 @@ els.categoryForm.addEventListener("submit", createCategory);
 els.entryForm.addEventListener("submit", addEntry);
 els.closeEditorBtn.addEventListener("click", () => {
   state.activeCategory = null;
+  els.libraryMain.classList.remove("hidden");
   els.libraryEditor.classList.add("hidden");
 });
 

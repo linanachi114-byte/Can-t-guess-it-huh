@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "fill-hints": "node scripts/fill-hints.mjs",
-    "expand-bank": "node scripts/expand-bank.mjs"
+    "expand-bank": "node scripts/expand-bank.mjs",
+    "cache-images": "node scripts/cache-images.mjs"
   },
   "engines": {
     "node": ">=18"
