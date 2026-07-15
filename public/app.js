@@ -1,3 +1,5 @@
+const MAX_CLUES = 5;
+
 const state = {
   game: null,
   wordbank: {},
@@ -12,6 +14,7 @@ const state = {
   activeCategory: null,
   editingCategory: null,
   pendingConfirm: null,
+  modalEntryClues: [],
   entryPageSize: 10,
   entryPages: {}
 };
@@ -86,8 +89,10 @@ const els = {
   modalEntryWordInput: document.querySelector("#modalEntryWordInput"),
   modalEntryImageInput: document.querySelector("#modalEntryImageInput"),
   modalEntryImageName: document.querySelector("#modalEntryImageName"),
-  modalEntryCluesInput: document.querySelector("#modalEntryCluesInput"),
-  modalEntryAiCluesInput: document.querySelector("#modalEntryAiCluesInput"),
+  modalEntryClueList: document.querySelector("#modalEntryClueList"),
+  modalEntryAddClueBtn: document.querySelector("#modalEntryAddClueBtn"),
+  modalEntryAiFillBtn: document.querySelector("#modalEntryAiFillBtn"),
+  modalEntryClueLimitNote: document.querySelector("#modalEntryClueLimitNote"),
   libraryMessage: document.querySelector("#libraryMessage"),
   entryPager: document.querySelector("#entryPager"),
   entryList: document.querySelector("#entryList"),
@@ -188,13 +193,6 @@ function normalizeClues(clues) {
     : [];
 }
 
-function splitClueText(text) {
-  return String(text || "")
-    .split(/\r?\n|[；;]/)
-    .map((clue) => clue.trim())
-    .filter(Boolean);
-}
-
 function askConfirm({ title = "确认操作", text = "确定要继续吗？此操作无法撤销。", okText = "确认" } = {}) {
   els.confirmModalTitle.textContent = title;
   els.confirmModalText.textContent = text;
@@ -217,6 +215,98 @@ function closeConfirm(result = false) {
 
 function updateFileName(input, target, fallback = "未选择图片") {
   target.textContent = input.files?.[0]?.name || fallback;
+}
+
+function currentModalEntryClues() {
+  return normalizeClues(state.modalEntryClues).slice(0, MAX_CLUES);
+}
+
+function moveModalEntryClue(fromIndex, toIndex) {
+  if (fromIndex === toIndex) return;
+  const clues = [...state.modalEntryClues];
+  const [moved] = clues.splice(fromIndex, 1);
+  clues.splice(toIndex, 0, moved);
+  state.modalEntryClues = clues;
+  renderModalEntryClues();
+}
+
+function renderModalEntryClues() {
+  els.modalEntryClueList.innerHTML = "";
+  state.modalEntryClues = state.modalEntryClues.slice(0, MAX_CLUES);
+
+  state.modalEntryClues.forEach((clue, clueIndex) => {
+    const item = document.createElement("div");
+    item.className = "clue-chip modal-clue-chip";
+    item.draggable = true;
+    item.dataset.index = String(clueIndex);
+
+    const handle = document.createElement("button");
+    handle.type = "button";
+    handle.className = "drag-handle";
+    handle.title = "拖动排序";
+    handle.setAttribute("aria-label", "拖动排序");
+    handle.textContent = "☰";
+
+    const number = document.createElement("span");
+    number.className = "clue-number";
+    number.textContent = String(clueIndex + 1);
+
+    const input = document.createElement("input");
+    input.className = "clue-edit-input";
+    input.value = clue;
+    input.placeholder = "填写线索";
+    input.addEventListener("input", () => {
+      state.modalEntryClues[clueIndex] = input.value;
+    });
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "icon-tool danger";
+    deleteBtn.title = "删除线索";
+    deleteBtn.setAttribute("aria-label", "删除线索");
+    deleteBtn.textContent = "×";
+    deleteBtn.disabled = state.modalEntryClues.length <= 1;
+    deleteBtn.addEventListener("click", () => {
+      if (state.modalEntryClues.length <= 1) return;
+      state.modalEntryClues.splice(clueIndex, 1);
+      renderModalEntryClues();
+    });
+
+    item.addEventListener("dragstart", (event) => {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(clueIndex));
+      item.classList.add("dragging");
+    });
+    item.addEventListener("dragend", () => item.classList.remove("dragging"));
+    item.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      item.classList.add("drag-over");
+    });
+    item.addEventListener("dragleave", () => item.classList.remove("drag-over"));
+    item.addEventListener("drop", (event) => {
+      event.preventDefault();
+      item.classList.remove("drag-over");
+      const fromIndex = Number(event.dataTransfer.getData("text/plain"));
+      if (!Number.isInteger(fromIndex)) return;
+      moveModalEntryClue(fromIndex, clueIndex);
+    });
+
+    item.append(handle, number, input, deleteBtn);
+    els.modalEntryClueList.append(item);
+  });
+
+  const atLimit = state.modalEntryClues.length >= MAX_CLUES;
+  els.modalEntryAddClueBtn.disabled = atLimit;
+  els.modalEntryClueLimitNote.textContent = atLimit ? "该词条已经有五条线索了，无法再添加新的线索。" : "";
+}
+
+function addModalEntryClue() {
+  if (state.modalEntryClues.length >= MAX_CLUES) {
+    showToast("该词条已经有五条线索了，无法再添加新的线索。", true);
+    return;
+  }
+  state.modalEntryClues.push("");
+  renderModalEntryClues();
 }
 
 function renderGame() {
@@ -708,15 +798,25 @@ function renderEditor(category) {
 
     const clueList = document.createElement("div");
     clueList.className = "clue-list";
-    renderClueItems(clueList, category, index, wordInput, imageInput, entry.clues || []);
+    const existingClues = normalizeClues(entry.clues);
+    renderClueItems(clueList, category, index, wordInput, imageInput, existingClues);
 
     const addClueBtn = document.createElement("button");
     addClueBtn.type = "button";
     addClueBtn.className = "add-clue-button";
     addClueBtn.textContent = "+ 添加线索";
+    addClueBtn.disabled = existingClues.length >= MAX_CLUES;
     addClueBtn.addEventListener("click", () => addClueInline(clueList, category, index, wordInput.value, imageInput.value));
 
-    clueSection.append(clueLabel, clueList, addClueBtn);
+    const clueTools = document.createElement("div");
+    clueTools.className = "clue-toolbar";
+
+    const clueLimitNote = document.createElement("small");
+    clueLimitNote.className = "clue-limit-note";
+    clueLimitNote.textContent = existingClues.length >= MAX_CLUES ? "该词条已经有五条线索了，无法再添加新的线索。" : "";
+
+    clueTools.append(addClueBtn, clueLimitNote);
+    clueSection.append(clueLabel, clueList, clueTools);
     content.append(main, clueSection);
     row.append(deleteBtn, imagePanel, content);
     els.entryList.append(row);
@@ -1027,8 +1127,9 @@ function openEntryModal() {
   if (!state.activeCategory) return;
   clearLibraryMessage();
   els.entryModalForm.reset();
+  state.modalEntryClues = ["", "", ""];
+  renderModalEntryClues();
   updateFileName(els.modalEntryImageInput, els.modalEntryImageName);
-  els.modalEntryAiCluesInput.checked = true;
   els.entryModal.classList.remove("hidden");
   els.modalEntryWordInput.focus();
 }
@@ -1043,7 +1144,7 @@ async function addEntry(event) {
 
   const word = els.modalEntryWordInput.value.trim();
   const imageFile = els.modalEntryImageInput.files?.[0];
-  const manualClues = splitClueText(els.modalEntryCluesInput.value);
+  const manualClues = currentModalEntryClues();
   if (!word) {
     showToast("请填写词条名称。", true);
     return;
@@ -1052,14 +1153,14 @@ async function addEntry(event) {
     showToast("请为词条选择一张图片。", true);
     return;
   }
-  if (!manualClues.length && !els.modalEntryAiCluesInput.checked) {
-    showToast("请填写线索，或勾选让 AI 自动生成。", true);
+  if (!manualClues.length) {
+    showToast("请至少填写一个线索。", true);
     return;
   }
 
   const button = els.entryModalSubmitBtn;
   button.disabled = true;
-  button.textContent = manualClues.length ? "添加中" : "生成线索中";
+  button.textContent = "添加中";
   try {
     const bank = await api("/api/wordbank/entry", {
       method: "POST",
@@ -1077,6 +1178,54 @@ async function addEntry(event) {
   } finally {
     button.disabled = false;
     button.textContent = "添加词条";
+  }
+}
+
+async function fillEmptyEntryModalClues() {
+  const word = els.modalEntryWordInput.value.trim();
+  if (!word) {
+    showToast("请先填写词条名称。", true);
+    return;
+  }
+
+  const emptyIndexes = state.modalEntryClues
+    .map((clue, index) => ({ clue: String(clue || "").trim(), index }))
+    .filter((item) => !item.clue)
+    .map((item) => item.index);
+
+  if (!emptyIndexes.length) {
+    showToast("请至少留出一个空着的词条，不用麻烦 AI", true);
+    return;
+  }
+
+  const button = els.modalEntryAiFillBtn;
+  button.disabled = true;
+  button.textContent = "AI 填写中";
+  try {
+    const data = await api("/api/hint/fill", {
+      method: "POST",
+      body: JSON.stringify({
+        category: state.activeCategory,
+        word,
+        existingClues: currentModalEntryClues(),
+        emptyCount: emptyIndexes.length
+      })
+    });
+    const clues = normalizeClues(data.clues).slice(0, emptyIndexes.length);
+    if (!clues.length) {
+      showToast("AI 暂时没有生成可用线索。", true);
+      return;
+    }
+    clues.forEach((clue, index) => {
+      state.modalEntryClues[emptyIndexes[index]] = clue;
+    });
+    renderModalEntryClues();
+    showToast(`AI 已填写 ${clues.length} 条空线索。`);
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = "让 AI 填写空线索";
   }
 }
 
@@ -1114,7 +1263,7 @@ async function saveEntry(category, index, word, clues, image = "", notify = true
   try {
     const bank = await api("/api/wordbank/entry", {
       method: "PUT",
-      body: JSON.stringify({ category, index, word, clues: normalizeClues(clues), image })
+      body: JSON.stringify({ category, index, word, clues: normalizeClues(clues).slice(0, MAX_CLUES), image })
     });
     await refreshWordbank(bank);
     if (notify) showToast("已保存。");
@@ -1146,7 +1295,7 @@ async function deleteEntry(category, index, word = "") {
 async function updateEntry(category, index, word, clues, message = "已保存。", image = "") {
   const bank = await api("/api/wordbank/entry", {
     method: "PUT",
-    body: JSON.stringify({ category, index, word, clues: normalizeClues(clues), image })
+    body: JSON.stringify({ category, index, word, clues: normalizeClues(clues).slice(0, MAX_CLUES), image })
   });
   await refreshWordbank(bank);
   if (message) showToast(message);
@@ -1156,6 +1305,11 @@ async function updateEntry(category, index, word, clues, message = "已保存。
 function addClueInline(container, category, entryIndex, word, image = "") {
   const entry = state.wordbank[category]?.[entryIndex];
   if (!entry) return;
+  const currentClues = normalizeClues(entry.clues);
+  if (currentClues.length >= MAX_CLUES) {
+    showToast("该词条已经有五条线索了，无法再添加新的线索。", true);
+    return;
+  }
 
   const item = document.createElement("div");
   item.className = "clue-chip editing";
@@ -1178,9 +1332,13 @@ function addClueInline(container, category, entryIndex, word, image = "") {
 
   const save = async () => {
     const clue = input.value.trim();
-    if (!clue) return;
+    if (!clue) {
+      showToast("请输入有效的内容", true);
+      input.focus();
+      return;
+    }
     try {
-      await updateEntry(category, entryIndex, word, [...normalizeClues(entry.clues), clue], "", image);
+      await updateEntry(category, entryIndex, word, [...currentClues, clue].slice(0, MAX_CLUES), "", image);
     } catch (error) {
       setLibraryMessage(error.message, true);
     }
@@ -1247,7 +1405,11 @@ function editClueInline(item, category, entryIndex, clueIndex, word, image = "")
 
   const save = async () => {
     const next = input.value.trim();
-    if (!next) return;
+    if (!next) {
+      showToast("请输入有效的内容", true);
+      input.focus();
+      return;
+    }
     const clues = normalizeClues(entry.clues);
     clues[clueIndex] = next;
     try {
@@ -1346,6 +1508,8 @@ els.confirmModal.addEventListener("click", (event) => {
 });
 els.addEntryBtn.addEventListener("click", openEntryModal);
 els.modalEntryImageInput.addEventListener("change", () => updateFileName(els.modalEntryImageInput, els.modalEntryImageName));
+els.modalEntryAddClueBtn.addEventListener("click", addModalEntryClue);
+els.modalEntryAiFillBtn.addEventListener("click", fillEmptyEntryModalClues);
 els.entryModalForm.addEventListener("submit", addEntry);
 els.entryModalCloseBtn.addEventListener("click", closeEntryModal);
 els.entryModalCancelBtn.addEventListener("click", closeEntryModal);

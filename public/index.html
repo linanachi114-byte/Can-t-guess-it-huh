@@ -162,15 +162,18 @@
             </span>
           </label>
 
-          <label class="field-block">
-            <span class="field-label">词条线索：</span>
-            <textarea id="modalEntryCluesInput" placeholder="可手动填写，每行一条；留空则让 AI 自动生成。"></textarea>
-          </label>
-
-          <label class="modal-check">
-            <input id="modalEntryAiCluesInput" type="checkbox" checked>
-            <span>未填写线索时，让 AI 自动生成线索</span>
-          </label>
+          <section class="modal-clue-panel">
+            <div class="modal-clue-title">
+              <span class="field-label">词条线索：</span>
+              <button id="modalEntryAiFillBtn" class="ai-clue-button compact" type="button">让 AI 填写空线索</button>
+            </div>
+            <p class="modal-clue-note">至少填写 1 个线索才能成功生成该词条。</p>
+            <div id="modalEntryClueList" class="clue-list"></div>
+            <div class="modal-clue-toolbar">
+              <button id="modalEntryAddClueBtn" class="add-clue-button" type="button">+ 添加线索</button>
+              <small id="modalEntryClueLimitNote" class="clue-limit-note"></small>
+            </div>
+          </section>
 
           <div class="modal-actions">
             <button id="entryModalCancelBtn" class="text-button" type="button">取消</button>

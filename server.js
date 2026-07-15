@@ -23,6 +23,7 @@ const IMAGE_DIR = path.join(PUBLIC_DIR, "images");
 const CATEGORY_COVER_DIR = path.join(IMAGE_DIR, "category-covers");
 const CATEGORY_COVER_INDEX_PATH = path.join(CATEGORY_COVER_DIR, "index.json");
 const PLACEHOLDER_IMAGE = "/images/placeholder.svg";
+const MAX_CLUES = 5;
 const games = new Map();
 
 function loadEnv(envPath) {
@@ -512,9 +513,26 @@ async function generateClues(word, category) {
   return splitClues(content).slice(0, 3);
 }
 
+async function generateMissingClues(word, category, existingClues, emptyCount) {
+  const count = Math.min(Math.max(Number(emptyCount) || 0, 1), MAX_CLUES);
+  const keptClues = existingClues.map(cleanClue).filter(Boolean).slice(0, MAX_CLUES);
+  const content = await askDeepSeek([
+    {
+      role: "system",
+      content:
+        "你要为中文猜词游戏补全空白线索。必须优先理解题库名代表的语境：同一个词在不同题库里含义可能完全不同。用户已经写好的线索必须完整保留，你只能为仍然空着的位置生成新线索。新线索不能和已有线索在含义、逻辑层级或表达重点上重复，也不能直接写出答案或包含答案完整词语。每条线索只能包含一个事实，按从宽到窄的思路生成，但不要使用唯一定位式描述。每条 4 到 12 个中文字符。只输出指定数量的线索，每行一条，不要编号，不要解释。"
+    },
+    {
+      role: "user",
+      content: `题库名：${category}\n目标词：${word}\n已有线索：${keptClues.length ? keptClues.join("；") : "无"}\n需要补全的空白线索数量：${count}\n请只生成这些空白位置的新线索，不要重复已有线索。`
+    }
+  ], 260);
+  return splitClues(content).slice(0, count);
+}
+
 function cluesFromBody(body) {
-  if (Array.isArray(body.clues)) return body.clues.map(cleanClue).filter(Boolean);
-  return splitClues(body.clues ?? body.hint);
+  if (Array.isArray(body.clues)) return body.clues.map(cleanClue).filter(Boolean).slice(0, MAX_CLUES);
+  return splitClues(body.clues ?? body.hint).slice(0, MAX_CLUES);
 }
 
 function requireCategoryName(category) {
@@ -789,6 +807,24 @@ async function handleApi(req, res) {
       return;
     }
     sendJson(res, 200, { clues: await generateClues(word, category) });
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/hint/fill") {
+    const body = await parseBody(req);
+    const category = requireCategoryName(body.category);
+    const word = String(body.word || "").trim();
+    const existingClues = cluesFromBody({ clues: body.existingClues });
+    const emptyCount = Math.min(Math.max(Number(body.emptyCount) || 0, 0), MAX_CLUES - existingClues.length);
+    if (!word) {
+      sendJson(res, 400, { error: "词条不能为空。" });
+      return;
+    }
+    if (emptyCount <= 0) {
+      sendJson(res, 400, { error: "请至少留出一个空着的词条，不用麻烦 AI" });
+      return;
+    }
+    sendJson(res, 200, { clues: await generateMissingClues(word, category, existingClues, emptyCount) });
     return;
   }
 
