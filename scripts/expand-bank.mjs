@@ -24,7 +24,7 @@ for (const [category, entries] of Object.entries(bank)) {
   const needed = targetCount - entries.length;
   if (needed <= 0) continue;
 
-  console.log(`扩充题库：${category}，需要 ${needed} 个`);
+  console.log(`扩充词库：${category}，需要 ${needed} 个`);
   const additions = await generateEntries(category, entries.map((entry) => entry.word), needed);
   for (const entry of additions) {
     if (bank[category].some((item) => item.word === entry.word)) continue;
@@ -35,7 +35,7 @@ for (const [category, entries] of Object.entries(bank)) {
 }
 
 await writeFile(bankPath, `${JSON.stringify(bank, null, 2)}\n`, "utf8");
-console.log("题库扩充已写入 data/wordbank.json");
+console.log("词库扩充已写入 data/wordbank.json");
 
 function loadEnv(filePath) {
   if (!existsSync(filePath)) return;
@@ -89,11 +89,11 @@ async function generateEntries(category, existingWords, needed) {
       {
         role: "system",
         content:
-          "你要为中文猜词游戏扩充题库。必须严格理解题库名代表的语境。不要输出已有词。每行输出一个词条，格式必须是：词条<TAB>线索1<TAB>线索2<TAB>线索3。线索按从宽到窄排列，每条只包含一个事实，4到12个中文字符，不要直接包含词条原文，不要一眼锁定。不要编号，不要解释。"
+          "你要为中文猜词游戏扩充词库。必须严格理解词库名代表的语境。不要输出已有词。每行输出一个词条，格式必须是：词条<TAB>线索1<TAB>线索2<TAB>线索3。线索按从宽到窄排列，每条只包含一个事实，4到12个中文字符，不要直接包含词条原文，不要一眼锁定。不要编号，不要解释。"
       },
       {
         role: "user",
-        content: `题库名：${category}\n已有词条：${JSON.stringify([...existingWords, ...results.map((item) => item.word)])}\n请新增 ${requested} 个适合这个题库的词条。`
+        content: `词库名：${category}\n已有词条：${JSON.stringify([...existingWords, ...results.map((item) => item.word)])}\n请新增 ${requested} 个适合这个词库的词条。`
       }
     ], 6000);
 

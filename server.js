@@ -350,7 +350,7 @@ async function startGame(categories) {
     ? categories.filter((name) => Array.isArray(bank[name]) && bank[name].length)
     : allCategories;
   if (!selectedCategories.length) {
-    throw new Error("请至少选择一个有词条的题库。");
+    throw new Error("请至少选择一个有词条的词库。");
   }
 
   const category = pickRandom(selectedCategories);
@@ -436,7 +436,7 @@ function buildQuestionMessages(game, question) {
     },
     {
       role: "user",
-      content: `隐藏答案：${game.word}\n所属题库：${game.category}\n已公布线索：${revealedClues(game).join("；") || "暂无"}\n最近历史：\n${compactHistory || "暂无"}\n\n玩家问题：${question}\n请只输出：是、否、是也不是。`
+      content: `隐藏答案：${game.word}\n所属词库：${game.category}\n已公布线索：${revealedClues(game).join("；") || "暂无"}\n最近历史：\n${compactHistory || "暂无"}\n\n玩家问题：${question}\n请只输出：是、否、是也不是。`
     }
   ];
 }
@@ -452,11 +452,11 @@ async function fallbackAnswerQuestion(game, question, votes) {
     {
       role: "system",
       content:
-        "你是中文猜词游戏的最终裁判。你知道隐藏答案，但绝不能透露答案，也不能解释。玩家问的是关于隐藏答案的是非问题。你会看到多个普通模型的回答投票；如果投票不一致，请基于隐藏答案、题库语境、已公布线索和玩家问题做最终裁决。只能输出：是、否、是也不是。"
+        "你是中文猜词游戏的最终裁判。你知道隐藏答案，但绝不能透露答案，也不能解释。玩家问的是关于隐藏答案的是非问题。你会看到多个普通模型的回答投票；如果投票不一致，请基于隐藏答案、词库语境、已公布线索和玩家问题做最终裁决。只能输出：是、否、是也不是。"
     },
     {
       role: "user",
-      content: `隐藏答案：${game.word}\n所属题库：${game.category}\n已公布线索：${revealedClues(game).join("；") || "暂无"}\n玩家问题：${question}\n普通模型投票：${votes.join("、")}\n请只输出：是、否、是也不是。`
+      content: `隐藏答案：${game.word}\n所属词库：${game.category}\n已公布线索：${revealedClues(game).join("；") || "暂无"}\n玩家问题：${question}\n普通模型投票：${votes.join("、")}\n请只输出：是、否、是也不是。`
     }
   ], 800, { model: FALLBACK_MODEL, thinking: "enabled" });
   return strictYesNoMaybe(content);
@@ -485,7 +485,7 @@ async function judgeGuess(game, guess) {
     },
     {
       role: "user",
-      content: `隐藏答案：${game.word}\n所属题库：${game.category}\n玩家答案：${guess}\n输出格式：{"correct":true} 或 {"correct":false}`
+      content: `隐藏答案：${game.word}\n所属词库：${game.category}\n玩家答案：${guess}\n输出格式：{"correct":true} 或 {"correct":false}`
     }
   ], 120);
 
@@ -503,11 +503,11 @@ async function generateClues(word, category) {
     {
       role: "system",
       content:
-        "你要为中文猜词游戏生成分层线索。必须优先理解题库名代表的语境：同一个词在不同题库里含义可能完全不同，例如题库是“杀戮尖塔”时，“悔恨”应理解为游戏中的诅咒卡，而不是普通情绪。生成 3 条线索，按从宽到窄排列。每条线索只能包含一个事实，不能把多个特征合并在同一句里。第 1 条只说大领域或大类别，第 2 条只说一个泛属性，第 3 条给一个中等强度特征。不要直接写出答案，不要包含答案完整词语，不要使用唯一定位式描述。避免“最大、唯一、标志、代表作、具体节日、作者、歌手、画家”等一眼锁定的信息。每条 4 到 12 个中文字符。只输出三行，每行一条线索，不要编号，不要解释。"
+        "你要为中文猜词游戏生成分层线索。必须优先理解词库名代表的语境：同一个词在不同词库里含义可能完全不同，例如词库是“杀戮尖塔”时，“悔恨”应理解为游戏中的诅咒卡，而不是普通情绪。生成 3 条线索，按从宽到窄排列。每条线索只能包含一个事实，不能把多个特征合并在同一句里。第 1 条只说大领域或大类别，第 2 条只说一个泛属性，第 3 条给一个中等强度特征。不要直接写出答案，不要包含答案完整词语，不要使用唯一定位式描述。避免“最大、唯一、标志、代表作、具体节日、作者、歌手、画家”等一眼锁定的信息。每条 4 到 12 个中文字符。只输出三行，每行一条线索，不要编号，不要解释。"
     },
     {
       role: "user",
-      content: `题库名：${category}\n目标词：${word}\n请根据题库语境生成 3 条分层线索。`
+      content: `词库名：${category}\n目标词：${word}\n请根据词库语境生成 3 条分层线索。`
     }
   ], 240);
   return splitClues(content).slice(0, 3);
@@ -520,11 +520,11 @@ async function generateMissingClues(word, category, existingClues, emptyCount) {
     {
       role: "system",
       content:
-        "你要为中文猜词游戏补全空白线索。必须优先理解题库名代表的语境：同一个词在不同题库里含义可能完全不同。用户已经写好的线索必须完整保留，你只能为仍然空着的位置生成新线索。新线索不能和已有线索在含义、逻辑层级或表达重点上重复，也不能直接写出答案或包含答案完整词语。每条线索只能包含一个事实，按从宽到窄的思路生成，但不要使用唯一定位式描述。每条 4 到 12 个中文字符。只输出指定数量的线索，每行一条，不要编号，不要解释。"
+        "你要为中文猜词游戏补全空白线索。必须优先理解词库名代表的语境：同一个词在不同词库里含义可能完全不同。用户已经写好的线索必须完整保留，你只能为仍然空着的位置生成新线索。新线索不能和已有线索在含义、逻辑层级或表达重点上重复，也不能直接写出答案或包含答案完整词语。每条线索只能包含一个事实，按从宽到窄的思路生成，但不要使用唯一定位式描述。每条 4 到 12 个中文字符。只输出指定数量的线索，每行一条，不要编号，不要解释。"
     },
     {
       role: "user",
-      content: `题库名：${category}\n目标词：${word}\n已有线索：${keptClues.length ? keptClues.join("；") : "无"}\n需要补全的空白线索数量：${count}\n请只生成这些空白位置的新线索，不要重复已有线索。`
+      content: `词库名：${category}\n目标词：${word}\n已有线索：${keptClues.length ? keptClues.join("；") : "无"}\n需要补全的空白线索数量：${count}\n请只生成这些空白位置的新线索，不要重复已有线索。`
     }
   ], 260);
   return splitClues(content).slice(0, count);
@@ -537,7 +537,7 @@ function cluesFromBody(body) {
 
 function requireCategoryName(category) {
   const name = String(category || "").trim();
-  if (!name) throw new Error("题库名不能为空。");
+  if (!name) throw new Error("词库名不能为空。");
   return name;
 }
 
@@ -615,7 +615,7 @@ async function handleApi(req, res) {
     const category = requireCategoryName(body.category);
     const bank = await readWordBank();
     if (bank[category]) {
-      sendJson(res, 400, { error: "这个题库已经存在。" });
+      sendJson(res, 400, { error: "这个词库已经存在。" });
       return;
     }
     bank[category] = [];
@@ -630,11 +630,11 @@ async function handleApi(req, res) {
     const newCategory = requireCategoryName(body.newCategory);
     const bank = await readWordBank();
     if (!bank[oldCategory]) {
-      sendJson(res, 404, { error: "题库不存在。" });
+      sendJson(res, 404, { error: "词库不存在。" });
       return;
     }
     if (oldCategory !== newCategory && bank[newCategory]) {
-      sendJson(res, 400, { error: "这个题库名称已经存在。" });
+      sendJson(res, 400, { error: "这个词库名称已经存在。" });
       return;
     }
 
@@ -663,7 +663,7 @@ async function handleApi(req, res) {
     const category = requireCategoryName(body.category);
     const bank = await readWordBank();
     if (!bank[category]) {
-      sendJson(res, 404, { error: "题库不存在。" });
+      sendJson(res, 404, { error: "词库不存在。" });
       return;
     }
     delete bank[category];
@@ -684,7 +684,7 @@ async function handleApi(req, res) {
     const file = files.cover;
     const bank = await readWordBank();
     if (!bank[category]) {
-      sendJson(res, 404, { error: "题库不存在。" });
+      sendJson(res, 404, { error: "词库不存在。" });
       return;
     }
     if (!file?.buffer?.length) {
@@ -739,7 +739,7 @@ async function handleApi(req, res) {
     const bank = await readWordBank();
     const entries = bank[category];
     if (!entries) {
-      sendJson(res, 404, { error: "题库不存在。" });
+      sendJson(res, 404, { error: "词库不存在。" });
       return;
     }
     const index = requireEntryIndex(body.index, entries);
@@ -755,7 +755,7 @@ async function handleApi(req, res) {
     const bank = await readWordBank();
     const entries = bank[category];
     if (!entries) {
-      sendJson(res, 404, { error: "题库不存在。" });
+      sendJson(res, 404, { error: "词库不存在。" });
       return;
     }
     const index = requireEntryIndex(body.index, entries);
@@ -771,7 +771,7 @@ async function handleApi(req, res) {
     const bank = await readWordBank();
     const entries = bank[category];
     if (!entries) {
-      sendJson(res, 404, { error: "题库不存在。" });
+      sendJson(res, 404, { error: "词库不存在。" });
       return;
     }
     const index = requireEntryIndex(fields.index, entries);

@@ -158,7 +158,7 @@ async function commonsSearchImage(query) {
 }
 
 async function findCoverUrl(category) {
-  const query = coverQueries[category] || `${category} 题库 封面`;
+  const query = coverQueries[category] || `${category} 词库 封面`;
   const bing = await bingSearchImages(query);
   if (bing.length) return bing;
   const commons = await commonsSearchImage(query);

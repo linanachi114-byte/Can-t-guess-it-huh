@@ -490,7 +490,7 @@ function renderShare() {
   const record = state.shareRecord;
   if (!record) return;
   const steps = shareableSteps(record);
-  els.shareMeta.textContent = `题库：${record.category} · ${record.questionCount} 个问题 · ${outcomeText(record.outcome)}`;
+  els.shareMeta.textContent = `词库：${record.category} · ${record.questionCount} 个问题 · ${outcomeText(record.outcome)}`;
   els.shareSteps.innerHTML = "";
 
   steps.slice(0, state.shareStep).forEach((item, index) => {
@@ -604,7 +604,7 @@ function renderLibraryCards() {
     card.className = "library-card";
     card.tabIndex = 0;
     card.setAttribute("role", "button");
-    card.setAttribute("aria-label", `打开题库 ${category}`);
+    card.setAttribute("aria-label", `打开词库 ${category}`);
     const openCategory = () => {
       state.activeCategory = category;
       state.entryPages[category] = 1;
@@ -628,8 +628,8 @@ function renderLibraryCards() {
     const editBtn = document.createElement("button");
     editBtn.type = "button";
     editBtn.className = "library-card-edit";
-    editBtn.title = "编辑题库";
-    editBtn.setAttribute("aria-label", `编辑题库 ${category}`);
+    editBtn.title = "编辑词库";
+    editBtn.setAttribute("aria-label", `编辑词库 ${category}`);
     editBtn.textContent = "✎";
     editBtn.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -644,7 +644,7 @@ function renderLibraryCards() {
     const meta = document.createElement("span");
     meta.textContent = `${entries.length} 个词条`;
     const sample = document.createElement("small");
-    sample.textContent = entries.slice(0, 3).map((entry) => entry.word).join("、") || "空题库";
+    sample.textContent = entries.slice(0, 3).map((entry) => entry.word).join("、") || "空词库";
     body.append(title, meta, sample);
     card.append(cover, editBtn, body);
     els.libraryCards.append(card);
@@ -935,7 +935,7 @@ async function newGame() {
     body: JSON.stringify({ categories })
   });
   localStorage.setItem("guess-word-game-id", state.game.id);
-  setMessage("新游戏开始。AI 已经想好一个词。");
+  setMessage("新一局开始。AI 已经想好一个词。");
   setGameStage("play");
   renderGame();
 }
@@ -945,7 +945,7 @@ async function submitTurn(event) {
   const text = els.mainInput.value.trim();
   if (!text) return;
   if (!state.game) {
-    showToast("请先选择题库并开始游戏。", true);
+    showToast("请先选择词库并开始猜词。", true);
     setGameStage("category");
     return;
   }
@@ -977,7 +977,7 @@ async function submitTurn(event) {
 
 async function showClue() {
   if (!state.game) {
-    showToast("请先选择题库并开始游戏。", true);
+    showToast("请先选择词库并开始猜词。", true);
     setGameStage("category");
     return;
   }
@@ -1003,7 +1003,7 @@ async function showClue() {
 
 async function revealAnswer() {
   if (!state.game) {
-    showToast("请先选择题库并开始游戏。", true);
+    showToast("请先选择词库并开始猜词。", true);
     setGameStage("category");
     return;
   }
@@ -1055,7 +1055,7 @@ async function createCategory(event) {
   const category = els.modalCategoryNameInput.value.trim();
   const coverFile = els.modalCategoryCoverInput.files?.[0];
   if (!category) {
-    showToast("请填写题库名称。", true);
+    showToast("请填写词库名称。", true);
     return;
   }
 
@@ -1073,7 +1073,7 @@ async function createCategory(event) {
     if (coverFile) await uploadCategoryCover(category, coverFile);
     await refreshWordbank(bank);
     closeCategoryModal();
-    showToast(`已新建题库：${category}`);
+    showToast(`已新建词库：${category}`);
   } catch (error) {
     showToast(error.message, true);
   } finally {
@@ -1125,7 +1125,7 @@ async function saveCategoryEdit(event) {
     if (coverFile) await uploadCategoryCover(newCategory, coverFile);
     await refreshWordbank(bank);
     closeCategoryEditModal();
-    showToast("题库已更新。");
+    showToast("词库已更新。");
   } catch (error) {
     showToast(error.message, true);
   } finally {
@@ -1137,7 +1137,7 @@ async function deleteCategory() {
   const category = state.editingCategory;
   if (!category) return;
   const confirmed = await askConfirm({
-    title: "删除题库",
+    title: "删除词库",
     text: `确认要删除“${category}”吗？此操作无法撤销。`,
     okText: "确认删除"
   });
@@ -1154,7 +1154,7 @@ async function deleteCategory() {
     delete state.categoryCovers[category];
     await refreshWordbank(bank);
     closeCategoryEditModal();
-    showToast("题库已删除。");
+    showToast("词库已删除。");
   } catch (error) {
     showToast(error.message, true);
   }

@@ -19,11 +19,13 @@
         <nav class="main-nav" aria-label="主菜单">
           <button id="gameNavBtn" class="active" type="button">
             <svg aria-hidden="true" class="nav-svg" viewBox="0 0 24 24">
-              <path d="M6.2 7.3c1.1-2 3-3.1 5.7-3.1 3.5 0 5.9 2 5.9 5 0 2.4-1.4 3.8-4.1 4.8l-.9.3v1.7" />
-              <path d="M12.8 19.6h.1" />
-              <path d="M4.8 18.4c2.1 1.4 4.4 2.1 7.2 2.1 2.8 0 5.1-.7 7.2-2.1" />
+              <path d="M4.6 6.3h10.8a3.1 3.1 0 0 1 3.1 3.1v2.1a3.1 3.1 0 0 1-3.1 3.1h-4.5l-4.4 3.2v-3.2H4.6a3.1 3.1 0 0 1-3.1-3.1V9.4a3.1 3.1 0 0 1 3.1-3.1z" />
+              <path d="M6.5 9.5h6.8" />
+              <path d="M6.5 12h4" />
+              <circle cx="15.8" cy="14.7" r="2.4" />
+              <path d="M17.5 16.4l2.7 2.7" />
             </svg>
-            <span>游戏</span>
+            <span>猜词</span>
           </button>
           <button id="libraryNavBtn" type="button">
             <svg aria-hidden="true" class="nav-svg" viewBox="0 0 24 24">
@@ -33,7 +35,7 @@
               <path d="M7.2 14h7.4" />
               <path d="M17.2 8.5v10" />
             </svg>
-            <span>题库</span>
+            <span>词库</span>
           </button>
           <button id="historyNavBtn" type="button">
             <svg aria-hidden="true" class="nav-svg" viewBox="0 0 24 24">
@@ -50,13 +52,13 @@
         <section class="game">
           <section id="gameModePanel" class="game-stage">
             <div class="stage-heading">
-              <p class="eyebrow">开始游戏</p>
+              <p class="eyebrow">开始猜词</p>
               <h2>选择一个模式</h2>
             </div>
             <div class="mode-choice-grid">
               <button id="chooseBankModeBtn" class="mode-choice-card" type="button">
-                <strong>选择题库</strong>
-                <span>从一个或多个题库里随机抽取词条。</span>
+                <strong>选择词库</strong>
+                <span>从选定词库里随机抽取词条。</span>
               </button>
               <button id="dailyModeBtn" class="mode-choice-card disabled" type="button">
                 <strong>每日一题</strong>
@@ -68,8 +70,8 @@
           <section id="gameCategoryPanel" class="game-stage hidden">
             <div class="panel-title category-panel-title">
               <div>
-                <p class="eyebrow">选择题库</p>
-                <h2>本局可用题库</h2>
+                <p class="eyebrow">选择词库</p>
+                <h2>本局可用词库</h2>
                 <p class="subtle">请先选择词库，再开始猜词。</p>
               </div>
             </div>
@@ -86,12 +88,12 @@
               <div>
                 <h2>本局</h2>
               </div>
-              <button id="newGameBtn" class="icon-button" type="button" title="重新选择题库" aria-label="重新选择题库">↻</button>
+              <button id="newGameBtn" class="icon-button" type="button" title="重新选择词库" aria-label="重新选择词库">↻</button>
             </header>
 
             <section class="status-strip" aria-live="polite">
               <div>
-                <span>当前题库</span>
+                <span>当前词库</span>
                 <strong id="categoryLabel">未开始</strong>
               </div>
               <div>
@@ -149,12 +151,12 @@
         <section id="libraryMain" class="library-main">
           <div class="panel-title">
             <div>
-              <h2>题库</h2>
-              <p class="subtle">管理题库、词条和每个词条的线索。</p>
+              <h2>词库</h2>
+              <p class="subtle">管理词库、词条和每个词条的线索。</p>
             </div>
-            <button id="openCategoryModalBtn" class="editor-add-button" type="button" title="添加题库">
+            <button id="openCategoryModalBtn" class="editor-add-button" type="button" title="添加词库">
               <span class="add-entry-icon" aria-hidden="true">+</span>
-              <span>添加题库</span>
+              <span>添加词库</span>
             </button>
           </div>
 
@@ -164,9 +166,9 @@
         <section id="libraryEditor" class="library-editor hidden">
           <div class="panel-title editor-heading">
             <div class="editor-title-group">
-              <button id="closeEditorBtn" class="back-button" type="button" title="返回题库" aria-label="返回题库">←</button>
+              <button id="closeEditorBtn" class="back-button" type="button" title="返回词库" aria-label="返回词库">←</button>
               <div>
-                <h2 id="editorTitle">题库详情</h2>
+                <h2 id="editorTitle">词库详情</h2>
                 <p id="editorMeta" class="subtle"></p>
               </div>
             </div>
@@ -231,19 +233,19 @@
         <form id="categoryModalForm" class="entry-modal">
           <div class="modal-title">
             <div>
-              <h2 id="categoryModalTitle">添加题库</h2>
-              <p class="subtle">创建一个新的自定义题库。</p>
+              <h2 id="categoryModalTitle">添加词库</h2>
+              <p class="subtle">创建一个新的自定义词库。</p>
             </div>
             <button id="categoryModalCloseBtn" class="icon-tool danger" type="button" title="关闭" aria-label="关闭">×</button>
           </div>
 
           <label class="field-block">
-            <span class="field-label">题库名称：</span>
+            <span class="field-label">词库名称：</span>
             <input id="modalCategoryNameInput" autocomplete="off" required>
           </label>
 
           <label class="field-block">
-            <span class="field-label">题库封面：</span>
+            <span class="field-label">词库封面：</span>
             <span class="file-picker">
               <input id="modalCategoryCoverInput" class="hidden-file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
               <span class="file-picker-button">选择图片</span>
@@ -253,7 +255,7 @@
 
           <div class="modal-actions">
             <button id="categoryModalCancelBtn" class="text-button" type="button">取消</button>
-            <button id="categoryModalSubmitBtn" type="submit">添加题库</button>
+            <button id="categoryModalSubmitBtn" type="submit">添加词库</button>
           </div>
         </form>
       </div>
@@ -262,14 +264,14 @@
         <form id="categoryEditForm" class="entry-modal">
           <div class="modal-title">
             <div>
-              <h2 id="categoryEditModalTitle">编辑题库</h2>
-              <p class="subtle">可以修改名称、封面，或删除整个题库。</p>
+              <h2 id="categoryEditModalTitle">编辑词库</h2>
+              <p class="subtle">可以修改名称、封面，或删除整个词库。</p>
             </div>
             <button id="categoryEditCloseBtn" class="icon-tool danger" type="button" title="关闭" aria-label="关闭">×</button>
           </div>
 
           <label class="field-block">
-            <span class="field-label">题库名称：</span>
+            <span class="field-label">词库名称：</span>
             <input id="editCategoryNameInput" autocomplete="off" required>
           </label>
 
@@ -283,7 +285,7 @@
           </label>
 
           <div class="modal-actions split-actions">
-            <button id="deleteCategoryBtn" class="danger-button" type="button">删除题库</button>
+            <button id="deleteCategoryBtn" class="danger-button" type="button">删除词库</button>
             <div>
               <button id="categoryEditCancelBtn" class="text-button" type="button">取消</button>
               <button id="categoryEditSubmitBtn" type="submit">保存修改</button>
@@ -325,7 +327,7 @@
           <p id="shareMeta" class="subtle"></p>
           <div id="shareSteps" class="share-steps"></div>
           <button id="nextShareStepBtn" class="secondary-button" type="button">揭晓下一步</button>
-          <button id="exitShareBtn" class="text-button" type="button">返回游戏</button>
+          <button id="exitShareBtn" class="text-button" type="button">返回猜词</button>
         </section>
       </section>
       <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
