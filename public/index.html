@@ -19,11 +19,13 @@
         <nav class="main-nav" aria-label="主菜单">
           <button id="gameNavBtn" class="active" type="button">
             <svg aria-hidden="true" class="nav-svg" viewBox="0 0 24 24">
-              <path d="M5 6.5h9.5a2.5 2.5 0 0 1 2.5 2.5v5.2a2.5 2.5 0 0 1-2.5 2.5H9.1L5 19.5v-2.8A2.5 2.5 0 0 1 2.5 14.2V9A2.5 2.5 0 0 1 5 6.5z" />
-              <path d="M8.2 10.1c.5-.9 1.4-1.4 2.7-1.4 1.6 0 2.7.9 2.7 2.2 0 1.1-.7 1.7-1.9 2.1l-.5.2v.9" />
-              <path d="M11.2 16h.1" />
-              <path d="M17.2 5.3l3.9-1.8-1.8 3.9" />
-              <path d="M17.8 6l3.1 3.1" />
+              <path d="M5.2 8.2 12 4.4l6.8 3.8v7.6L12 19.6l-6.8-3.8z" />
+              <path d="M8.4 10.1h7.2" />
+              <path d="M8.4 13.9h3.4" />
+              <path d="M15.8 14.1l1.5 1.5 2.6-3" />
+              <path d="M4.2 5.1l2.1 2.1" />
+              <path d="M19.8 5.1l-2.1 2.1" />
+              <path d="M12 2.7v1.7" />
             </svg>
             <span>猜词</span>
           </button>
@@ -102,8 +104,7 @@
               <button id="newGameBtn" class="icon-button" type="button" title="重新选择词库" aria-label="重新选择词库">↻</button>
             </section>
             <div class="play-action-stack">
-              <button id="clueBtn" class="secondary-button" type="button">查看下一条线索</button>
-              <button id="revealBtn" class="danger-button" type="button">我猜不出来，请公布答案</button>
+              <button id="clueBtn" class="secondary-button" type="button">没有思路？点此揭示线索</button>
             </div>
 
             <section id="hintBanner" class="hint-banner hidden">
@@ -121,10 +122,17 @@
 
             <section class="controls">
               <form id="playForm" class="play-form">
-                <input id="mainInput" autocomplete="off" placeholder="先问一个是/否问题">
-                <button id="submitBtn" type="submit">提交</button>
+                <div class="prompt-input-wrap">
+                  <input id="mainInput" autocomplete="off" placeholder="先问一个是/否问题">
+                  <button id="rerollPromptBtn" class="prompt-tool-button" type="button" title="换一个提示问题" aria-label="换一个提示问题">↻</button>
+                  <button id="usePromptBtn" class="prompt-tool-button" type="button" title="填入当前提示问题" aria-label="填入当前提示问题">↳</button>
+                </div>
+                <button id="submitBtn" type="submit">提问</button>
               </form>
-              <button id="finalGuessBtn" class="final-guess-button" type="button">我已经猜出来答案了</button>
+              <div class="final-action-row">
+                <button id="finalGuessBtn" class="final-guess-button" type="button">我已经猜出来答案了</button>
+                <button id="revealBtn" class="danger-button" type="button">我猜不出来，请公布答案</button>
+              </div>
               <div class="share-row">
                 <button id="shareBtn" class="text-button hidden" type="button">分享本局</button>
                 <button id="rerollCurrentBtn" class="secondary-button hidden" type="button">以当前词库再来一局</button>
@@ -319,7 +327,7 @@
           <input id="finalGuessInput" autocomplete="off" required>
           <div id="finalGuessResult" class="guess-result hidden" aria-live="polite"></div>
 
-          <div class="modal-actions">
+          <div class="modal-actions final-guess-actions">
             <button id="finalGuessCancelBtn" class="text-button" type="button">取消</button>
             <button id="finalGuessSubmitBtn" class="danger-button" type="submit">提交最终答案</button>
           </div>

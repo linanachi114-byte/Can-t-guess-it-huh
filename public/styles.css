@@ -437,21 +437,52 @@ h2 {
 }
 
 .play-form {
-  grid-template-columns: 1fr 112px;
+  grid-template-columns: minmax(0, 1fr) 112px;
 }
 
-.final-guess-button {
-  justify-self: end;
-  width: 112px;
+.prompt-input-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px 40px;
+  gap: 8px;
+}
+
+.prompt-tool-button {
   min-height: 46px;
-  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #b7dfd6;
+  background: #edf7f5;
+  color: var(--accent-dark);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.prompt-tool-button:hover {
+  border-color: var(--accent);
+  background: #e5f3ef;
+}
+
+.final-action-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.final-guess-button,
+.final-action-row .danger-button {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
   border-radius: 8px;
   background: #fff1f0;
   color: var(--danger);
   border: 1px solid #ffccc7;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 900;
   line-height: 1.2;
+}
+
+.final-guess-button {
+  background: #fff7f5;
 }
 
 .inline-form {
@@ -520,6 +551,15 @@ textarea:focus {
   background: var(--accent);
   color: white;
   font-weight: 800;
+}
+
+.play-form .prompt-tool-button {
+  padding: 0;
+  border: 1px solid #b7dfd6;
+  background: #edf7f5;
+  color: var(--accent-dark);
+  font-size: 20px;
+  font-weight: 900;
 }
 
 button:disabled {
@@ -1415,6 +1455,25 @@ button:disabled {
   background: #fff1f0;
   color: var(--danger);
   animation: verdictShake 0.42s ease-out;
+}
+
+.final-guess-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.final-guess-actions button {
+  width: 100%;
+}
+
+.final-guess-modal.result-correct .final-guess-actions {
+  grid-template-columns: 1fr;
+}
+
+.final-guess-modal.result-correct .final-guess-actions button[type="submit"] {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
 }
 
 @keyframes spin {

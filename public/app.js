@@ -50,6 +50,8 @@ const state = {
   shareRecord: null,
   shareStep: 0,
   categorySelectionInitialized: false,
+  currentAskPlaceholder: "",
+  finalGuessOutcome: null,
   view: "game",
   gameStage: "mode",
   libraryCardMode: MOBILE_QUERY.matches ? "compact" : "large",
@@ -90,6 +92,8 @@ const els = {
   playForm: document.querySelector("#playForm"),
   mainInput: document.querySelector("#mainInput"),
   submitBtn: document.querySelector("#submitBtn"),
+  rerollPromptBtn: document.querySelector("#rerollPromptBtn"),
+  usePromptBtn: document.querySelector("#usePromptBtn"),
   finalGuessBtn: document.querySelector("#finalGuessBtn"),
   clueBtn: document.querySelector("#clueBtn"),
   revealBtn: document.querySelector("#revealBtn"),
@@ -220,7 +224,9 @@ function setLoading(isLoading) {
   els.clueBtn.disabled = isLoading || isOver || !canShowMoreClues();
   els.newGameBtn.disabled = isLoading;
   els.rerollCurrentBtn.disabled = isLoading;
-  els.submitBtn.textContent = isLoading ? "等待中" : "提交";
+  els.rerollPromptBtn.disabled = isLoading || isOver;
+  els.usePromptBtn.disabled = isLoading || isOver;
+  els.submitBtn.textContent = isLoading ? "提问中" : "提问";
 }
 
 function randomAskPlaceholder() {
@@ -228,7 +234,14 @@ function randomAskPlaceholder() {
 }
 
 function refreshMainInputPlaceholder() {
-  els.mainInput.placeholder = randomAskPlaceholder();
+  state.currentAskPlaceholder = randomAskPlaceholder();
+  els.mainInput.placeholder = state.currentAskPlaceholder;
+}
+
+function useCurrentAskPlaceholder() {
+  if (!state.currentAskPlaceholder) refreshMainInputPlaceholder();
+  els.mainInput.value = state.currentAskPlaceholder;
+  els.mainInput.focus();
 }
 
 function setView(view) {
@@ -418,7 +431,11 @@ function renderGame() {
   els.clueBtn.replaceChildren();
   const clueAction = document.createElement("span");
   clueAction.className = "clue-button-action";
-  clueAction.textContent = clueIndex < clueCount ? `查看下一条线索（${clueIndex}/${clueCount}）` : "线索已用完";
+  clueAction.textContent = clueIndex < clueCount
+    ? shownClues.length > 0
+      ? `查看下一条线索（${clueIndex}/${clueCount}）`
+      : "没有思路？点此揭示线索"
+    : "线索已用完";
   els.clueBtn.append(clueAction);
   if (shownClues.length > 0) {
     const clueList = document.createElement("span");
@@ -649,7 +666,7 @@ function renderCategoryPicker() {
     const name = document.createElement("span");
     name.textContent = category;
     const count = document.createElement("small");
-    count.textContent = `${entries.length} 个`;
+    count.textContent = `含 ${entries.length} 个词条`;
     row.append(name, count);
     els.categoryList.append(row);
   });
@@ -742,7 +759,7 @@ function renderLibraryCards() {
     const title = document.createElement("strong");
     title.textContent = category;
     const meta = document.createElement("span");
-    meta.textContent = `${entries.length} 个词条`;
+    meta.textContent = `含 ${entries.length} 个词条`;
     const sample = document.createElement("small");
     sample.textContent = entries.slice(0, 3).map((entry) => entry.word).join("、") || "空词库";
     body.append(title, meta, sample);
@@ -1117,6 +1134,12 @@ async function revealAnswer() {
     setGameStage("category");
     return;
   }
+  const confirmed = await askConfirm({
+    title: "公布答案",
+    text: "真的不继续猜测了吗？果然猜不出来吧？",
+    okText: "公布答案"
+  });
+  if (!confirmed) return;
   setLoading(true);
   setMessage("正在公布答案...");
 
@@ -1146,6 +1169,18 @@ function openFinalGuessModal() {
     return;
   }
   if (isGameOver()) return;
+  resetFinalGuessForm();
+  els.finalGuessModal.classList.remove("hidden");
+  els.finalGuessInput.focus();
+}
+
+function closeFinalGuessModal() {
+  els.finalGuessModal.classList.add("hidden");
+  state.finalGuessOutcome = null;
+}
+
+function resetFinalGuessForm() {
+  state.finalGuessOutcome = null;
   els.finalGuessForm.classList.remove("judging", "result-correct", "result-wrong");
   els.finalGuessResult.className = "guess-result hidden";
   els.finalGuessResult.replaceChildren();
@@ -1154,16 +1189,13 @@ function openFinalGuessModal() {
   els.finalGuessSubmitBtn.disabled = false;
   els.finalGuessCancelBtn.disabled = false;
   els.finalGuessCloseBtn.disabled = false;
+  els.finalGuessCancelBtn.classList.remove("hidden");
+  els.finalGuessCancelBtn.textContent = "取消";
   els.finalGuessSubmitBtn.textContent = "提交最终答案";
-  els.finalGuessModal.classList.remove("hidden");
-  els.finalGuessInput.focus();
-}
-
-function closeFinalGuessModal() {
-  els.finalGuessModal.classList.add("hidden");
 }
 
 function renderFinalGuessResult(correct) {
+  state.finalGuessOutcome = correct;
   els.finalGuessForm.classList.remove("judging");
   els.finalGuessForm.classList.add(correct ? "result-correct" : "result-wrong");
   els.finalGuessResult.className = `guess-result ${correct ? "correct" : "wrong"}`;
@@ -1173,13 +1205,31 @@ function renderFinalGuessResult(correct) {
   const verdict = document.createElement("strong");
   verdict.textContent = correct ? "完全正确" : "错误";
   els.finalGuessResult.append(label, verdict);
-  els.finalGuessSubmitBtn.textContent = "已判定";
+  els.finalGuessInput.disabled = true;
+  els.finalGuessSubmitBtn.disabled = false;
   els.finalGuessCancelBtn.disabled = false;
   els.finalGuessCloseBtn.disabled = false;
+  if (correct) {
+    els.finalGuessCancelBtn.classList.add("hidden");
+    els.finalGuessSubmitBtn.textContent = "返回猜词界面";
+  } else {
+    els.finalGuessCancelBtn.classList.remove("hidden");
+    els.finalGuessCancelBtn.textContent = "返回，继续提问";
+    els.finalGuessSubmitBtn.textContent = "重新猜测";
+  }
 }
 
 async function submitFinalGuess(event) {
   event.preventDefault();
+  if (state.finalGuessOutcome === true) {
+    closeFinalGuessModal();
+    return;
+  }
+  if (state.finalGuessOutcome === false) {
+    resetFinalGuessForm();
+    els.finalGuessInput.focus();
+    return;
+  }
   const guess = els.finalGuessInput.value.trim();
   if (!guess) {
     showToast("请输入你的最终答案。", true);
@@ -1210,6 +1260,7 @@ async function submitFinalGuess(event) {
     renderGame();
     renderFinalGuessResult(Boolean(latest?.correct));
   } catch (error) {
+    state.finalGuessOutcome = null;
     els.finalGuessForm.classList.remove("judging");
     els.finalGuessResult.className = "guess-result wrong";
     els.finalGuessResult.textContent = error.message;
@@ -1704,6 +1755,11 @@ els.startSelectedGameBtn.addEventListener("click", async () => {
   }
 });
 els.playForm.addEventListener("submit", submitTurn);
+els.rerollPromptBtn.addEventListener("click", () => {
+  refreshMainInputPlaceholder();
+  els.mainInput.focus();
+});
+els.usePromptBtn.addEventListener("click", useCurrentAskPlaceholder);
 els.finalGuessBtn.addEventListener("click", openFinalGuessModal);
 els.finalGuessForm.addEventListener("submit", submitFinalGuess);
 els.finalGuessCloseBtn.addEventListener("click", closeFinalGuessModal);
