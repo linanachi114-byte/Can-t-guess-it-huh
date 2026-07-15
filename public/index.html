@@ -19,13 +19,12 @@
         <nav class="main-nav" aria-label="主菜单">
           <button id="gameNavBtn" class="active" type="button">
             <svg aria-hidden="true" class="nav-svg" viewBox="0 0 24 24">
-              <path d="M5.2 8.2 12 4.4l6.8 3.8v7.6L12 19.6l-6.8-3.8z" />
-              <path d="M8.4 10.1h7.2" />
-              <path d="M8.4 13.9h3.4" />
-              <path d="M15.8 14.1l1.5 1.5 2.6-3" />
-              <path d="M4.2 5.1l2.1 2.1" />
-              <path d="M19.8 5.1l-2.1 2.1" />
-              <path d="M12 2.7v1.7" />
+              <circle cx="10.4" cy="10.4" r="5.4" />
+              <path d="m14.4 14.4 4.4 4.4" />
+              <path d="M8.8 8.9c.4-.8 1.1-1.2 2.1-1.2 1.2 0 2 .7 2 1.8 0 .8-.5 1.3-1.4 1.7l-.6.3v.9" />
+              <path d="M10.9 14.4h.1" />
+              <path d="M17.4 4.6h2.2v2.2" />
+              <path d="M19.6 4.6 16.5 7.7" />
             </svg>
             <span>猜词</span>
           </button>
@@ -126,6 +125,7 @@
                   <input id="mainInput" autocomplete="off" placeholder="先问一个是/否问题">
                   <button id="rerollPromptBtn" class="prompt-tool-button" type="button" title="换一个提示问题" aria-label="换一个提示问题">↻</button>
                   <button id="usePromptBtn" class="prompt-tool-button" type="button" title="填入当前提示问题" aria-label="填入当前提示问题">↳</button>
+                  <button id="clearInputBtn" class="prompt-tool-button danger-lite" type="button" title="清空输入" aria-label="清空输入">×</button>
                 </div>
                 <button id="submitBtn" type="submit">提问</button>
               </form>

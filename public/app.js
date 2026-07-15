@@ -94,6 +94,7 @@ const els = {
   submitBtn: document.querySelector("#submitBtn"),
   rerollPromptBtn: document.querySelector("#rerollPromptBtn"),
   usePromptBtn: document.querySelector("#usePromptBtn"),
+  clearInputBtn: document.querySelector("#clearInputBtn"),
   finalGuessBtn: document.querySelector("#finalGuessBtn"),
   clueBtn: document.querySelector("#clueBtn"),
   revealBtn: document.querySelector("#revealBtn"),
@@ -226,6 +227,7 @@ function setLoading(isLoading) {
   els.rerollCurrentBtn.disabled = isLoading;
   els.rerollPromptBtn.disabled = isLoading || isOver;
   els.usePromptBtn.disabled = isLoading || isOver;
+  els.clearInputBtn.disabled = isLoading || isOver;
   els.submitBtn.textContent = isLoading ? "提问中" : "提问";
 }
 
@@ -242,6 +244,24 @@ function useCurrentAskPlaceholder() {
   if (!state.currentAskPlaceholder) refreshMainInputPlaceholder();
   els.mainInput.value = state.currentAskPlaceholder;
   els.mainInput.focus();
+}
+
+function clearQuestionInput() {
+  els.mainInput.value = "";
+  refreshMainInputPlaceholder();
+  els.mainInput.focus();
+}
+
+function goGameHome() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("share");
+  window.history.replaceState(null, "", url);
+  state.game = null;
+  localStorage.removeItem("guess-word-game-id");
+  setMessage("");
+  refreshMainInputPlaceholder();
+  setView("game");
+  setGameStage("mode");
 }
 
 function setView(view) {
@@ -459,6 +479,9 @@ function renderGame() {
   if (game?.revealedImage) els.revealedImage.src = game.revealedImage;
   els.mainInput.disabled = isOver;
   els.submitBtn.disabled = isOver;
+  els.rerollPromptBtn.disabled = isOver;
+  els.usePromptBtn.disabled = isOver;
+  els.clearInputBtn.disabled = isOver;
   els.finalGuessBtn.disabled = isOver;
   els.revealBtn.disabled = isOver;
   els.clueBtn.disabled = isOver || !canShowMoreClues();
@@ -1091,8 +1114,7 @@ async function submitTurn(event) {
       body: JSON.stringify({ gameId: state.game.id, question: text })
     });
     els.mainInput.value = "";
-    const last = state.game.history.at(-1);
-    if (last?.type === "question") setMessage(`AI：${last.answer}`);
+    setMessage("");
     localStorage.setItem("guess-word-game-id", state.game.id);
     renderGame();
   } catch (error) {
@@ -1740,7 +1762,7 @@ async function regenerateClues(category, index, word, button) {
   }
 }
 
-els.gameNavBtn.addEventListener("click", () => setView("game"));
+els.gameNavBtn.addEventListener("click", goGameHome);
 els.libraryNavBtn.addEventListener("click", () => setView("library"));
 els.historyNavBtn.addEventListener("click", () => setView("history"));
 els.chooseBankModeBtn.addEventListener("click", () => setGameStage("category"));
@@ -1760,6 +1782,7 @@ els.rerollPromptBtn.addEventListener("click", () => {
   els.mainInput.focus();
 });
 els.usePromptBtn.addEventListener("click", useCurrentAskPlaceholder);
+els.clearInputBtn.addEventListener("click", clearQuestionInput);
 els.finalGuessBtn.addEventListener("click", openFinalGuessModal);
 els.finalGuessForm.addEventListener("submit", submitFinalGuess);
 els.finalGuessCloseBtn.addEventListener("click", closeFinalGuessModal);

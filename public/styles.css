@@ -442,7 +442,7 @@ h2 {
 
 .prompt-input-wrap {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 40px 40px;
+  grid-template-columns: minmax(0, 1fr) repeat(3, 40px);
   gap: 8px;
 }
 
@@ -459,6 +459,16 @@ h2 {
 .prompt-tool-button:hover {
   border-color: var(--accent);
   background: #e5f3ef;
+}
+
+.prompt-tool-button.danger-lite {
+  border-color: #ffccc7;
+  background: #fff7f5;
+  color: var(--danger);
+}
+
+.prompt-tool-button.danger-lite:hover {
+  background: #fff1f0;
 }
 
 .final-action-row {
@@ -560,6 +570,12 @@ textarea:focus {
   color: var(--accent-dark);
   font-size: 20px;
   font-weight: 900;
+}
+
+.play-form .prompt-tool-button.danger-lite {
+  border-color: #ffccc7;
+  background: #fff7f5;
+  color: var(--danger);
 }
 
 button:disabled {
@@ -725,7 +741,9 @@ button:disabled {
 }
 
 .answer.hint {
-  background: #217a8f;
+  border: 1px solid #f3cf9a;
+  background: #fff6e8;
+  color: #8a4b0f;
 }
 
 .empty {
