@@ -562,27 +562,30 @@ button:disabled {
 
 .library-card-edit {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 8px;
+  right: 8px;
   z-index: 1;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   display: inline-grid;
   place-items: center;
-  border-radius: 8px;
-  border: 1px solid rgba(214, 223, 226, 0.86);
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--accent-dark);
-  font-size: 19px;
+  border-radius: 999px;
+  border: 1px solid rgba(214, 223, 226, 0.48);
+  background: rgba(255, 255, 255, 0.42);
+  color: rgba(13, 124, 102, 0.62);
+  font-size: 14px;
   font-weight: 900;
-  box-shadow: 0 8px 20px rgba(23, 32, 38, 0.12);
+  opacity: 0.45;
   cursor: pointer;
+  transition: opacity 0.16s ease, background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
 }
 
 .library-card-edit:hover,
 .library-card-edit:focus-visible {
   border-color: var(--accent);
-  background: white;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--accent-dark);
+  opacity: 1;
   outline: none;
 }
 
@@ -787,7 +790,53 @@ button:disabled {
 }
 
 .hidden-file-input {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+  padding: 0;
+  margin: -1px;
+}
+
+.file-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.file-picker-button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid #fac276;
+  background: #fff7e8;
+  color: #7b4500;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.file-picker:hover .file-picker-button,
+.file-picker:focus-within .file-picker-button {
+  border-color: #f0a83e;
+  background: #fff2d6;
+}
+
+.file-picker-name {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .entry-content {

@@ -56,6 +56,7 @@ const els = {
   categoryModalSubmitBtn: document.querySelector("#categoryModalSubmitBtn"),
   modalCategoryNameInput: document.querySelector("#modalCategoryNameInput"),
   modalCategoryCoverInput: document.querySelector("#modalCategoryCoverInput"),
+  modalCategoryCoverName: document.querySelector("#modalCategoryCoverName"),
   categoryEditModal: document.querySelector("#categoryEditModal"),
   categoryEditForm: document.querySelector("#categoryEditForm"),
   categoryEditCloseBtn: document.querySelector("#categoryEditCloseBtn"),
@@ -63,6 +64,7 @@ const els = {
   categoryEditSubmitBtn: document.querySelector("#categoryEditSubmitBtn"),
   editCategoryNameInput: document.querySelector("#editCategoryNameInput"),
   editCategoryCoverInput: document.querySelector("#editCategoryCoverInput"),
+  editCategoryCoverName: document.querySelector("#editCategoryCoverName"),
   deleteCategoryBtn: document.querySelector("#deleteCategoryBtn"),
   confirmModal: document.querySelector("#confirmModal"),
   confirmModalTitle: document.querySelector("#confirmModalTitle"),
@@ -83,6 +85,7 @@ const els = {
   entryModalSubmitBtn: document.querySelector("#entryModalSubmitBtn"),
   modalEntryWordInput: document.querySelector("#modalEntryWordInput"),
   modalEntryImageInput: document.querySelector("#modalEntryImageInput"),
+  modalEntryImageName: document.querySelector("#modalEntryImageName"),
   modalEntryCluesInput: document.querySelector("#modalEntryCluesInput"),
   modalEntryAiCluesInput: document.querySelector("#modalEntryAiCluesInput"),
   libraryMessage: document.querySelector("#libraryMessage"),
@@ -210,6 +213,10 @@ function closeConfirm(result = false) {
     state.pendingConfirm = null;
     resolve(result);
   }
+}
+
+function updateFileName(input, target, fallback = "未选择图片") {
+  target.textContent = input.files?.[0]?.name || fallback;
 }
 
 function renderGame() {
@@ -883,6 +890,7 @@ async function revealAnswer() {
 
 function openCategoryModal() {
   els.categoryModalForm.reset();
+  updateFileName(els.modalCategoryCoverInput, els.modalCategoryCoverName);
   els.categoryModal.classList.remove("hidden");
   els.modalCategoryNameInput.focus();
 }
@@ -939,6 +947,7 @@ async function createCategory(event) {
 function openCategoryEditModal(category) {
   state.editingCategory = category;
   els.categoryEditForm.reset();
+  updateFileName(els.editCategoryCoverInput, els.editCategoryCoverName);
   els.editCategoryNameInput.value = category;
   els.categoryEditModal.classList.remove("hidden");
   els.editCategoryNameInput.focus();
@@ -1018,6 +1027,7 @@ function openEntryModal() {
   if (!state.activeCategory) return;
   clearLibraryMessage();
   els.entryModalForm.reset();
+  updateFileName(els.modalEntryImageInput, els.modalEntryImageName);
   els.modalEntryAiCluesInput.checked = true;
   els.entryModal.classList.remove("hidden");
   els.modalEntryWordInput.focus();
@@ -1314,12 +1324,14 @@ els.newGameBtn.addEventListener("click", async () => {
   }
 });
 els.openCategoryModalBtn.addEventListener("click", openCategoryModal);
+els.modalCategoryCoverInput.addEventListener("change", () => updateFileName(els.modalCategoryCoverInput, els.modalCategoryCoverName));
 els.categoryModalForm.addEventListener("submit", createCategory);
 els.categoryModalCloseBtn.addEventListener("click", closeCategoryModal);
 els.categoryModalCancelBtn.addEventListener("click", closeCategoryModal);
 els.categoryModal.addEventListener("click", (event) => {
   if (event.target === els.categoryModal) closeCategoryModal();
 });
+els.editCategoryCoverInput.addEventListener("change", () => updateFileName(els.editCategoryCoverInput, els.editCategoryCoverName));
 els.categoryEditForm.addEventListener("submit", saveCategoryEdit);
 els.categoryEditCloseBtn.addEventListener("click", closeCategoryEditModal);
 els.categoryEditCancelBtn.addEventListener("click", closeCategoryEditModal);
@@ -1333,6 +1345,7 @@ els.confirmModal.addEventListener("click", (event) => {
   if (event.target === els.confirmModal) closeConfirm(false);
 });
 els.addEntryBtn.addEventListener("click", openEntryModal);
+els.modalEntryImageInput.addEventListener("change", () => updateFileName(els.modalEntryImageInput, els.modalEntryImageName));
 els.entryModalForm.addEventListener("submit", addEntry);
 els.entryModalCloseBtn.addEventListener("click", closeEntryModal);
 els.entryModalCancelBtn.addEventListener("click", closeEntryModal);

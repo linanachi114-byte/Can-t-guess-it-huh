@@ -155,7 +155,11 @@
 
           <label class="field-block">
             <span class="field-label">词条图片：</span>
-            <input id="modalEntryImageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" required>
+            <span class="file-picker">
+              <input id="modalEntryImageInput" class="hidden-file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+              <span class="file-picker-button">选择图片</span>
+              <span id="modalEntryImageName" class="file-picker-name">未选择图片</span>
+            </span>
           </label>
 
           <label class="field-block">
@@ -192,7 +196,11 @@
 
           <label class="field-block">
             <span class="field-label">题库封面：</span>
-            <input id="modalCategoryCoverInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+            <span class="file-picker">
+              <input id="modalCategoryCoverInput" class="hidden-file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+              <span class="file-picker-button">选择图片</span>
+              <span id="modalCategoryCoverName" class="file-picker-name">未选择图片</span>
+            </span>
           </label>
 
           <div class="modal-actions">
@@ -219,7 +227,11 @@
 
           <label class="field-block">
             <span class="field-label">更换封面图：</span>
-            <input id="editCategoryCoverInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+            <span class="file-picker">
+              <input id="editCategoryCoverInput" class="hidden-file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+              <span class="file-picker-button">选择图片</span>
+              <span id="editCategoryCoverName" class="file-picker-name">未选择图片</span>
+            </span>
           </label>
 
           <div class="modal-actions split-actions">
