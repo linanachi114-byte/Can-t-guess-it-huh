@@ -120,16 +120,14 @@
             </section>
 
             <section class="controls">
-              <div class="mode-tabs" role="tablist" aria-label="输入模式">
-                <button id="askModeBtn" class="active" type="button">问问题</button>
-                <button id="guessModeBtn" type="button">猜答案</button>
-              </div>
               <form id="playForm" class="play-form">
                 <input id="mainInput" autocomplete="off" placeholder="先问一个是/否问题">
                 <button id="submitBtn" type="submit">提交</button>
               </form>
+              <button id="finalGuessBtn" class="final-guess-button" type="button">我已经猜出来答案了</button>
               <div class="share-row">
                 <button id="shareBtn" class="text-button hidden" type="button">分享本局</button>
+                <button id="rerollCurrentBtn" class="secondary-button hidden" type="button">以当前词库再来一局</button>
               </div>
               <p id="message" class="message"></p>
             </section>
@@ -307,6 +305,25 @@
             <button id="confirmOkBtn" class="danger-button" type="button">确认删除</button>
           </div>
         </section>
+      </div>
+
+      <div id="finalGuessModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="finalGuessModalTitle">
+        <form id="finalGuessForm" class="final-guess-modal">
+          <div class="modal-title">
+            <div>
+              <h2 id="finalGuessModalTitle">请输入你的最终答案：</h2>
+            </div>
+            <button id="finalGuessCloseBtn" class="icon-tool danger" type="button" title="关闭" aria-label="关闭">×</button>
+          </div>
+
+          <input id="finalGuessInput" autocomplete="off" required>
+          <div id="finalGuessResult" class="guess-result hidden" aria-live="polite"></div>
+
+          <div class="modal-actions">
+            <button id="finalGuessCancelBtn" class="text-button" type="button">取消</button>
+            <button id="finalGuessSubmitBtn" class="danger-button" type="submit">提交最终答案</button>
+          </div>
+        </form>
       </div>
 
       <section id="historyView" class="history-view hidden">
