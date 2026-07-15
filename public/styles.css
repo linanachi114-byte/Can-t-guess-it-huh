@@ -1504,7 +1504,6 @@ button:disabled {
   .entry-pager,
   .entry-main,
   .modal-actions,
-  .clue-chip,
   .share-step {
     grid-template-columns: 1fr;
   }
@@ -1555,6 +1554,57 @@ button:disabled {
     padding: 0 10px;
     font-size: 13px;
     text-align: left;
+  }
+
+  .entry-clues .clue-list {
+    gap: 6px;
+  }
+
+  .entry-clues .clue-chip {
+    grid-template-columns: 26px 22px minmax(0, 1fr) 28px 28px;
+    gap: 5px;
+    min-height: 34px;
+    padding: 5px 6px;
+    align-items: center;
+  }
+
+  .entry-clues .drag-handle,
+  .entry-clues .icon-tool {
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+    border-radius: 7px;
+    font-size: 13px;
+  }
+
+  .entry-clues .drag-handle {
+    width: 26px;
+  }
+
+  .entry-clues .clue-number {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+  }
+
+  .entry-clues .clue-text {
+    font-size: 13px;
+    line-height: 1.32;
+    font-weight: 800;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .entry-clues .clue-chip.editing {
+    grid-template-columns: minmax(0, 1fr) 28px 28px;
+  }
+
+  .entry-clues .clue-edit-input {
+    min-height: 30px;
+    padding: 0 8px;
+    font-size: 13px;
   }
 
   .editor-heading {
