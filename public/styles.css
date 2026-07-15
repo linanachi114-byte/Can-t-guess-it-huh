@@ -120,6 +120,17 @@ h2 {
   font-weight: 800;
 }
 
+.nav-svg {
+  display: none;
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .main-nav button.active,
 .mode-tabs button.active {
   background: var(--panel);
@@ -130,6 +141,11 @@ h2 {
 .view-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 18px;
+}
+
+.game-view {
+  display: grid;
   gap: 18px;
 }
 
@@ -147,8 +163,78 @@ h2 {
   min-height: calc(100vh - 132px);
   padding: 24px;
   display: grid;
-  grid-template-rows: auto auto auto auto auto 1fr;
+  align-content: start;
   gap: 18px;
+}
+
+.game-stage {
+  display: grid;
+  gap: 18px;
+}
+
+#gamePlayPanel {
+  grid-template-rows: auto auto auto auto auto 1fr;
+}
+
+.stage-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.mode-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.mode-choice-card {
+  min-height: 172px;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+}
+
+.mode-choice-card:hover,
+.mode-choice-card:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 8px 22px rgba(13, 124, 102, 0.1);
+  outline: none;
+}
+
+.mode-choice-card strong {
+  font-size: 20px;
+}
+
+.mode-choice-card span {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.mode-choice-card.disabled {
+  opacity: 0.72;
+}
+
+.stage-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+#startSelectedGameBtn {
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  font-weight: 900;
 }
 
 .topbar,
@@ -159,10 +245,17 @@ h2 {
   gap: 12px;
 }
 
+.category-panel-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
 .panel-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .icon-button {
@@ -1182,24 +1275,76 @@ button:disabled {
 }
 
 @media (max-width: 920px) {
+  body {
+    padding-bottom: max(82px, calc(64px + env(safe-area-inset-bottom)));
+  }
+
   .shell {
     width: min(100vw - 20px, 720px);
     padding: 12px 0;
   }
 
-  .app-header,
+  .app-header {
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
   .panel-title {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .brand-lockup {
-    align-items: center;
+  .main-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 55;
+    width: 100%;
+    min-height: 78px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    padding: 6px 10px max(18px, env(safe-area-inset-bottom));
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: rgba(255, 250, 240, 0.96);
+    box-shadow: 0 -14px 42px rgba(23, 32, 38, 0.12);
+    backdrop-filter: blur(12px);
   }
 
-  .main-nav {
-    width: 100%;
-    grid-template-columns: repeat(3, 1fr);
+  .main-nav button {
+    min-height: 54px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border-radius: 8px;
+    font-size: 12px;
+  }
+
+  .main-nav button.active {
+    background: transparent;
+    color: var(--accent-dark);
+    box-shadow: none;
+  }
+
+  .nav-svg {
+    display: block;
+  }
+
+  .category-panel-title {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .category-panel-title .panel-actions {
+    align-self: start;
+  }
+
+  .brand-lockup {
+    align-items: center;
   }
 
   .view-layout {
@@ -1212,6 +1357,7 @@ button:disabled {
   }
 
   .status-strip,
+  .mode-choice-grid,
   .play-form,
   .inline-form,
   .entry-pager,

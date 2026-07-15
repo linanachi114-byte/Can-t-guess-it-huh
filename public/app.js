@@ -10,6 +10,7 @@ const state = {
   categorySelectionInitialized: false,
   mode: "ask",
   view: "game",
+  gameStage: "mode",
   selectedCategories: new Set(),
   activeCategory: null,
   editingCategory: null,
@@ -48,8 +49,14 @@ const els = {
   revealBtn: document.querySelector("#revealBtn"),
   shareBtn: document.querySelector("#shareBtn"),
   newGameBtn: document.querySelector("#newGameBtn"),
-  openLibraryBtn: document.querySelector("#openLibraryBtn"),
-  categoryToggleAllBtn: document.querySelector("#categoryToggleAllBtn"),
+  chooseBankModeBtn: document.querySelector("#chooseBankModeBtn"),
+  dailyModeBtn: document.querySelector("#dailyModeBtn"),
+  gameModePanel: document.querySelector("#gameModePanel"),
+  gameCategoryPanel: document.querySelector("#gameCategoryPanel"),
+  gamePlayPanel: document.querySelector("#gamePlayPanel"),
+  backToModeBtn: document.querySelector("#backToModeBtn"),
+  randomCategoryBtn: document.querySelector("#randomCategoryBtn"),
+  startSelectedGameBtn: document.querySelector("#startSelectedGameBtn"),
   categoryList: document.querySelector("#categoryList"),
   openCategoryModalBtn: document.querySelector("#openCategoryModalBtn"),
   categoryModal: document.querySelector("#categoryModal"),
@@ -177,6 +184,15 @@ function setView(view) {
   els.shareView.classList.toggle("hidden", view !== "share");
   if (view === "library") renderLibrary();
   if (view === "history") loadGameHistory();
+}
+
+function setGameStage(stage) {
+  state.gameStage = stage;
+  els.gameModePanel.classList.toggle("hidden", stage !== "mode");
+  els.gameCategoryPanel.classList.toggle("hidden", stage !== "category");
+  els.gamePlayPanel.classList.toggle("hidden", stage !== "play");
+  if (stage === "category") renderCategoryPicker();
+  if (stage === "play") renderGame();
 }
 
 function formatTime(iso) {
@@ -521,8 +537,10 @@ function renderCategoryPicker() {
   state.selectedCategories.forEach((category) => {
     if (!validCategories.has(category)) state.selectedCategories.delete(category);
   });
+  if (state.selectedCategories.size > 1) {
+    state.selectedCategories = new Set([state.selectedCategories.values().next().value]);
+  }
   if (!state.categorySelectionInitialized) {
-    categories.forEach((category) => state.selectedCategories.add(category));
     state.categorySelectionInitialized = true;
   }
 
@@ -533,12 +551,13 @@ function renderCategoryPicker() {
     label.className = "category-row";
 
     const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
+    checkbox.type = "radio";
+    checkbox.name = "gameCategory";
     checkbox.checked = state.selectedCategories.has(category);
     checkbox.addEventListener("change", () => {
-      if (checkbox.checked) state.selectedCategories.add(category);
-      else state.selectedCategories.delete(category);
-      updateCategoryToggleButton();
+      if (checkbox.checked) state.selectedCategories = new Set([category]);
+      renderCategoryPicker();
+      updateCategoryActions();
     });
 
     const name = document.createElement("span");
@@ -548,23 +567,23 @@ function renderCategoryPicker() {
     label.append(checkbox, name, count);
     els.categoryList.append(label);
   });
-  updateCategoryToggleButton();
+  updateCategoryActions();
 }
 
-function updateCategoryToggleButton() {
+function updateCategoryActions() {
   const total = Object.keys(state.wordbank).length;
   const selected = state.selectedCategories.size;
-  els.categoryToggleAllBtn.textContent = selected === total && total > 0 ? "全不选" : "全选";
+  els.startSelectedGameBtn.disabled = selected === 0;
+  els.randomCategoryBtn.disabled = total === 0;
 }
 
-function toggleAllCategories() {
+function selectRandomCategory() {
   const categories = Object.keys(state.wordbank);
-  if (state.selectedCategories.size === categories.length) {
-    state.selectedCategories.clear();
-  } else {
-    state.selectedCategories = new Set(categories);
-  }
+  if (!categories.length) return;
+  const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+  state.selectedCategories = new Set([randomCategory]);
   renderCategoryPicker();
+  showToast(`已选择：${randomCategory}`);
 }
 
 function renderLibrary() {
@@ -904,14 +923,20 @@ async function refreshWordbank(bank) {
 }
 
 async function newGame() {
-  setMessage("正在准备隐藏词...");
   const categories = [...state.selectedCategories];
+  if (!categories.length) {
+    showToast("请先选择词库。", true);
+    setGameStage("category");
+    return;
+  }
+  setMessage("正在准备隐藏词...");
   state.game = await api("/api/game", {
     method: "POST",
     body: JSON.stringify({ categories })
   });
   localStorage.setItem("guess-word-game-id", state.game.id);
   setMessage("新游戏开始。AI 已经想好一个词。");
+  setGameStage("play");
   renderGame();
 }
 
@@ -919,7 +944,11 @@ async function submitTurn(event) {
   event.preventDefault();
   const text = els.mainInput.value.trim();
   if (!text) return;
-  if (!state.game) await newGame();
+  if (!state.game) {
+    showToast("请先选择题库并开始游戏。", true);
+    setGameStage("category");
+    return;
+  }
 
   setLoading(true);
   setMessage(state.mode === "ask" ? "AI 正在判断这个问题..." : "AI 裁判正在核对答案...");
@@ -947,7 +976,11 @@ async function submitTurn(event) {
 }
 
 async function showClue() {
-  if (!state.game) await newGame();
+  if (!state.game) {
+    showToast("请先选择题库并开始游戏。", true);
+    setGameStage("category");
+    return;
+  }
   if (!canShowMoreClues()) return;
   setLoading(true);
   setMessage("正在取出下一条线索...");
@@ -969,7 +1002,11 @@ async function showClue() {
 }
 
 async function revealAnswer() {
-  if (!state.game) await newGame();
+  if (!state.game) {
+    showToast("请先选择题库并开始游戏。", true);
+    setGameStage("category");
+    return;
+  }
   setLoading(true);
   setMessage("正在公布答案...");
 
@@ -1459,8 +1496,17 @@ async function regenerateClues(category, index, word, button) {
 els.gameNavBtn.addEventListener("click", () => setView("game"));
 els.libraryNavBtn.addEventListener("click", () => setView("library"));
 els.historyNavBtn.addEventListener("click", () => setView("history"));
-els.openLibraryBtn.addEventListener("click", () => setView("library"));
-els.categoryToggleAllBtn.addEventListener("click", toggleAllCategories);
+els.chooseBankModeBtn.addEventListener("click", () => setGameStage("category"));
+els.dailyModeBtn.addEventListener("click", () => showToast("每日一题稍后开放。"));
+els.backToModeBtn.addEventListener("click", () => setGameStage("mode"));
+els.randomCategoryBtn.addEventListener("click", selectRandomCategory);
+els.startSelectedGameBtn.addEventListener("click", async () => {
+  try {
+    await newGame();
+  } catch (error) {
+    showToast(error.message, true);
+  }
+});
 els.askModeBtn.addEventListener("click", () => setMode("ask"));
 els.guessModeBtn.addEventListener("click", () => setMode("guess"));
 els.playForm.addEventListener("submit", submitTurn);
@@ -1479,11 +1525,10 @@ els.exitShareBtn.addEventListener("click", () => {
   setView("game");
 });
 els.newGameBtn.addEventListener("click", async () => {
-  try {
-    await newGame();
-  } catch (error) {
-    setMessage(error.message, true);
-  }
+  state.game = null;
+  localStorage.removeItem("guess-word-game-id");
+  setMessage("");
+  setGameStage("category");
 });
 els.openCategoryModalBtn.addEventListener("click", openCategoryModal);
 els.modalCategoryCoverInput.addEventListener("change", () => updateFileName(els.modalCategoryCoverInput, els.modalCategoryCoverName));
@@ -1531,21 +1576,19 @@ els.closeEditorBtn.addEventListener("click", () => {
 
 await loadWordbank();
 renderLibrary();
+setGameStage("mode");
 
 try {
   const shareId = new URLSearchParams(window.location.search).get("share");
   if (shareId) {
     await openShare(shareId);
-  }
-  const gameId = localStorage.getItem("guess-word-game-id");
-  if (gameId) {
-    state.game = await api(`/api/game/${gameId}`);
-    setMessage("已恢复上一局。");
-    renderGame();
   } else {
-    await newGame();
+    localStorage.removeItem("guess-word-game-id");
+    state.game = null;
+    setGameStage("mode");
   }
 } catch {
   localStorage.removeItem("guess-word-game-id");
-  await newGame();
+  state.game = null;
+  setGameStage("mode");
 }
