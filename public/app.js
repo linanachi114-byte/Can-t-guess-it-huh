@@ -11,6 +11,7 @@ const state = {
   mode: "ask",
   view: "game",
   gameStage: "mode",
+  libraryCardMode: "compact",
   selectedCategories: new Set(),
   activeCategory: null,
   editingCategory: null,
@@ -92,6 +93,8 @@ const els = {
   editorMeta: document.querySelector("#editorMeta"),
   closeEditorBtn: document.querySelector("#closeEditorBtn"),
   addEntryBtn: document.querySelector("#addEntryBtn"),
+  largeLibraryModeBtn: document.querySelector("#largeLibraryModeBtn"),
+  compactLibraryModeBtn: document.querySelector("#compactLibraryModeBtn"),
   entryModal: document.querySelector("#entryModal"),
   entryModalForm: document.querySelector("#entryModalForm"),
   entryModalCloseBtn: document.querySelector("#entryModalCloseBtn"),
@@ -600,6 +603,7 @@ function selectRandomCategory() {
 }
 
 function renderLibrary() {
+  applyLibraryCardMode();
   renderLibraryCards();
   if (state.activeCategory && state.wordbank[state.activeCategory]) {
     renderEditor(state.activeCategory);
@@ -608,6 +612,19 @@ function renderLibrary() {
     els.libraryMain.classList.remove("hidden");
     els.libraryEditor.classList.add("hidden");
   }
+}
+
+function applyLibraryCardMode() {
+  const compact = state.libraryCardMode === "compact";
+  els.libraryCards.classList.toggle("compact-mode", compact);
+  els.libraryCards.classList.toggle("large-mode", !compact);
+  els.compactLibraryModeBtn.classList.toggle("active", compact);
+  els.largeLibraryModeBtn.classList.toggle("active", !compact);
+}
+
+function setLibraryCardMode(mode) {
+  state.libraryCardMode = mode;
+  applyLibraryCardMode();
 }
 
 function renderLibraryCards() {
@@ -1588,6 +1605,8 @@ els.closeEditorBtn.addEventListener("click", () => {
   els.libraryMain.classList.remove("hidden");
   els.libraryEditor.classList.add("hidden");
 });
+els.largeLibraryModeBtn.addEventListener("click", () => setLibraryCardMode("large"));
+els.compactLibraryModeBtn.addEventListener("click", () => setLibraryCardMode("compact"));
 
 await loadWordbank();
 renderLibrary();
