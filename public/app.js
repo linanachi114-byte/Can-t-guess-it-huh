@@ -10,6 +10,8 @@ const state = {
   view: "game",
   selectedCategories: new Set(),
   activeCategory: null,
+  editingCategory: null,
+  pendingConfirm: null,
   entryPageSize: 10,
   entryPages: {}
 };
@@ -46,8 +48,27 @@ const els = {
   openLibraryBtn: document.querySelector("#openLibraryBtn"),
   categoryToggleAllBtn: document.querySelector("#categoryToggleAllBtn"),
   categoryList: document.querySelector("#categoryList"),
-  categoryForm: document.querySelector("#categoryForm"),
-  newCategoryInput: document.querySelector("#newCategoryInput"),
+  openCategoryModalBtn: document.querySelector("#openCategoryModalBtn"),
+  categoryModal: document.querySelector("#categoryModal"),
+  categoryModalForm: document.querySelector("#categoryModalForm"),
+  categoryModalCloseBtn: document.querySelector("#categoryModalCloseBtn"),
+  categoryModalCancelBtn: document.querySelector("#categoryModalCancelBtn"),
+  categoryModalSubmitBtn: document.querySelector("#categoryModalSubmitBtn"),
+  modalCategoryNameInput: document.querySelector("#modalCategoryNameInput"),
+  modalCategoryCoverInput: document.querySelector("#modalCategoryCoverInput"),
+  categoryEditModal: document.querySelector("#categoryEditModal"),
+  categoryEditForm: document.querySelector("#categoryEditForm"),
+  categoryEditCloseBtn: document.querySelector("#categoryEditCloseBtn"),
+  categoryEditCancelBtn: document.querySelector("#categoryEditCancelBtn"),
+  categoryEditSubmitBtn: document.querySelector("#categoryEditSubmitBtn"),
+  editCategoryNameInput: document.querySelector("#editCategoryNameInput"),
+  editCategoryCoverInput: document.querySelector("#editCategoryCoverInput"),
+  deleteCategoryBtn: document.querySelector("#deleteCategoryBtn"),
+  confirmModal: document.querySelector("#confirmModal"),
+  confirmModalTitle: document.querySelector("#confirmModalTitle"),
+  confirmModalText: document.querySelector("#confirmModalText"),
+  confirmCancelBtn: document.querySelector("#confirmCancelBtn"),
+  confirmOkBtn: document.querySelector("#confirmOkBtn"),
   libraryMain: document.querySelector("#libraryMain"),
   libraryCards: document.querySelector("#libraryCards"),
   libraryEditor: document.querySelector("#libraryEditor"),
@@ -169,6 +190,26 @@ function splitClueText(text) {
     .split(/\r?\n|[；;]/)
     .map((clue) => clue.trim())
     .filter(Boolean);
+}
+
+function askConfirm({ title = "确认操作", text = "确定要继续吗？此操作无法撤销。", okText = "确认" } = {}) {
+  els.confirmModalTitle.textContent = title;
+  els.confirmModalText.textContent = text;
+  els.confirmOkBtn.textContent = okText;
+  els.confirmModal.classList.remove("hidden");
+  els.confirmOkBtn.focus();
+  return new Promise((resolve) => {
+    state.pendingConfirm = resolve;
+  });
+}
+
+function closeConfirm(result = false) {
+  els.confirmModal.classList.add("hidden");
+  if (state.pendingConfirm) {
+    const resolve = state.pendingConfirm;
+    state.pendingConfirm = null;
+    resolve(result);
+  }
 }
 
 function renderGame() {
@@ -443,14 +484,23 @@ function renderLibrary() {
 function renderLibraryCards() {
   els.libraryCards.innerHTML = "";
   Object.entries(state.wordbank).forEach(([category, entries]) => {
-    const card = document.createElement("button");
+    const card = document.createElement("article");
     card.className = "library-card";
-    card.type = "button";
-    card.addEventListener("click", () => {
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `打开题库 ${category}`);
+    const openCategory = () => {
       state.activeCategory = category;
       state.entryPages[category] = 1;
       clearLibraryMessage();
       renderEditor(category);
+    };
+    card.addEventListener("click", openCategory);
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openCategory();
+      }
     });
 
     const cover = document.createElement("img");
@@ -458,6 +508,17 @@ function renderLibraryCards() {
     cover.src = state.categoryCovers[category] || entries[0]?.image || "/images/placeholder.svg";
     cover.alt = "";
     cover.loading = "lazy";
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "library-card-edit";
+    editBtn.title = "编辑题库";
+    editBtn.setAttribute("aria-label", `编辑题库 ${category}`);
+    editBtn.textContent = "✎";
+    editBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openCategoryEditModal(category);
+    });
 
     const body = document.createElement("div");
     body.className = "library-card-body";
@@ -469,7 +530,7 @@ function renderLibraryCards() {
     const sample = document.createElement("small");
     sample.textContent = entries.slice(0, 3).map((entry) => entry.word).join("、") || "空题库";
     body.append(title, meta, sample);
-    card.append(cover, body);
+    card.append(cover, editBtn, body);
     els.libraryCards.append(card);
   });
 }
@@ -591,13 +652,7 @@ function renderEditor(category) {
     });
     wordField.append(wordLabel, wordInput);
 
-    const imageInput = document.createElement("input");
-    imageInput.className = "image-path-input";
-    imageInput.value = entry.image || "";
-    imageInput.placeholder = "图片路径，可留空自动搜索";
-    imageInput.addEventListener("change", () => {
-      saveEntry(category, index, wordInput.value, entry.clues, imageInput.value, false);
-    });
+    const imageInput = { value: entry.image || "" };
 
     const imagePanel = document.createElement("div");
     imagePanel.className = "entry-image-panel";
@@ -626,7 +681,7 @@ function renderEditor(category) {
       fileInput.value = "";
     });
 
-    imageTools.append(imageInput, uploadBtn, fileInput);
+    imageTools.append(uploadBtn, fileInput);
     imagePanel.append(imagePreview, imageTools);
 
     const generateBtn = document.createElement("button");
@@ -826,24 +881,136 @@ async function revealAnswer() {
   }
 }
 
+function openCategoryModal() {
+  els.categoryModalForm.reset();
+  els.categoryModal.classList.remove("hidden");
+  els.modalCategoryNameInput.focus();
+}
+
+function closeCategoryModal() {
+  els.categoryModal.classList.add("hidden");
+}
+
+async function uploadCategoryCover(category, file) {
+  const formData = new FormData();
+  formData.append("category", category);
+  formData.append("cover", file);
+  const response = await fetch("/api/wordbank/category-cover", {
+    method: "POST",
+    body: formData
+  });
+  const covers = await response.json();
+  if (!response.ok) throw new Error(covers.error || "上传封面失败");
+  state.categoryCovers = covers;
+  return covers;
+}
+
 async function createCategory(event) {
   event.preventDefault();
-  const category = els.newCategoryInput.value.trim();
-  if (!category) return;
+  const category = els.modalCategoryNameInput.value.trim();
+  const coverFile = els.modalCategoryCoverInput.files?.[0];
+  if (!category) {
+    showToast("请填写题库名称。", true);
+    return;
+  }
 
+  const button = els.categoryModalSubmitBtn;
+  button.disabled = true;
   try {
     const bank = await api("/api/wordbank/category", {
       method: "POST",
       body: JSON.stringify({ category })
     });
-    els.newCategoryInput.value = "";
     state.selectedCategories.add(category);
     state.activeCategory = category;
     state.entryPages[category] = 1;
+    state.wordbank = bank;
+    if (coverFile) await uploadCategoryCover(category, coverFile);
     await refreshWordbank(bank);
-    setLibraryMessage(`已新建题库：${category}`);
+    closeCategoryModal();
+    showToast(`已新建题库：${category}`);
   } catch (error) {
-    setLibraryMessage(error.message, true);
+    showToast(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function openCategoryEditModal(category) {
+  state.editingCategory = category;
+  els.categoryEditForm.reset();
+  els.editCategoryNameInput.value = category;
+  els.categoryEditModal.classList.remove("hidden");
+  els.editCategoryNameInput.focus();
+  els.editCategoryNameInput.select();
+}
+
+function closeCategoryEditModal() {
+  els.categoryEditModal.classList.add("hidden");
+  state.editingCategory = null;
+}
+
+async function saveCategoryEdit(event) {
+  event.preventDefault();
+  const oldCategory = state.editingCategory;
+  const newCategory = els.editCategoryNameInput.value.trim();
+  const coverFile = els.editCategoryCoverInput.files?.[0];
+  if (!oldCategory || !newCategory) return;
+
+  const button = els.categoryEditSubmitBtn;
+  button.disabled = true;
+  try {
+    let bank = state.wordbank;
+    if (newCategory !== oldCategory) {
+      bank = await api("/api/wordbank/category", {
+        method: "PUT",
+        body: JSON.stringify({ oldCategory, newCategory })
+      });
+      state.selectedCategories.delete(oldCategory);
+      state.selectedCategories.add(newCategory);
+      if (state.categoryCovers[oldCategory]) {
+        state.categoryCovers[newCategory] = state.categoryCovers[oldCategory];
+        delete state.categoryCovers[oldCategory];
+      }
+      if (state.activeCategory === oldCategory) state.activeCategory = newCategory;
+      state.entryPages[newCategory] = state.entryPages[oldCategory] || 1;
+      delete state.entryPages[oldCategory];
+    }
+    if (coverFile) await uploadCategoryCover(newCategory, coverFile);
+    await refreshWordbank(bank);
+    closeCategoryEditModal();
+    showToast("题库已更新。");
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function deleteCategory() {
+  const category = state.editingCategory;
+  if (!category) return;
+  const confirmed = await askConfirm({
+    title: "删除题库",
+    text: `确认要删除“${category}”吗？此操作无法撤销。`,
+    okText: "确认删除"
+  });
+  if (!confirmed) return;
+
+  try {
+    const bank = await api("/api/wordbank/category", {
+      method: "DELETE",
+      body: JSON.stringify({ category })
+    });
+    state.selectedCategories.delete(category);
+    if (state.activeCategory === category) state.activeCategory = null;
+    delete state.entryPages[category];
+    delete state.categoryCovers[category];
+    await refreshWordbank(bank);
+    closeCategoryEditModal();
+    showToast("题库已删除。");
+  } catch (error) {
+    showToast(error.message, true);
   }
 }
 
@@ -948,7 +1115,12 @@ async function saveEntry(category, index, word, clues, image = "", notify = true
 
 async function deleteEntry(category, index, word = "") {
   const label = word ? `“${word}”` : "这个词条";
-  if (!window.confirm(`确定要删除${label}吗？此操作不能撤销。`)) return;
+  const confirmed = await askConfirm({
+    title: "删除词条",
+    text: `确认要删除${label}吗？此操作无法撤销。`,
+    okText: "确认删除"
+  });
+  if (!confirmed) return;
   try {
     const bank = await api("/api/wordbank/entry", {
       method: "DELETE",
@@ -1141,7 +1313,25 @@ els.newGameBtn.addEventListener("click", async () => {
     setMessage(error.message, true);
   }
 });
-els.categoryForm.addEventListener("submit", createCategory);
+els.openCategoryModalBtn.addEventListener("click", openCategoryModal);
+els.categoryModalForm.addEventListener("submit", createCategory);
+els.categoryModalCloseBtn.addEventListener("click", closeCategoryModal);
+els.categoryModalCancelBtn.addEventListener("click", closeCategoryModal);
+els.categoryModal.addEventListener("click", (event) => {
+  if (event.target === els.categoryModal) closeCategoryModal();
+});
+els.categoryEditForm.addEventListener("submit", saveCategoryEdit);
+els.categoryEditCloseBtn.addEventListener("click", closeCategoryEditModal);
+els.categoryEditCancelBtn.addEventListener("click", closeCategoryEditModal);
+els.categoryEditModal.addEventListener("click", (event) => {
+  if (event.target === els.categoryEditModal) closeCategoryEditModal();
+});
+els.deleteCategoryBtn.addEventListener("click", deleteCategory);
+els.confirmCancelBtn.addEventListener("click", () => closeConfirm(false));
+els.confirmOkBtn.addEventListener("click", () => closeConfirm(true));
+els.confirmModal.addEventListener("click", (event) => {
+  if (event.target === els.confirmModal) closeConfirm(false);
+});
 els.addEntryBtn.addEventListener("click", openEntryModal);
 els.entryModalForm.addEventListener("submit", addEntry);
 els.entryModalCloseBtn.addEventListener("click", closeEntryModal);
@@ -1150,7 +1340,11 @@ els.entryModal.addEventListener("click", (event) => {
   if (event.target === els.entryModal) closeEntryModal();
 });
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !els.entryModal.classList.contains("hidden")) closeEntryModal();
+  if (event.key !== "Escape") return;
+  if (!els.confirmModal.classList.contains("hidden")) closeConfirm(false);
+  else if (!els.entryModal.classList.contains("hidden")) closeEntryModal();
+  else if (!els.categoryModal.classList.contains("hidden")) closeCategoryModal();
+  else if (!els.categoryEditModal.classList.contains("hidden")) closeCategoryEditModal();
 });
 els.closeEditorBtn.addEventListener("click", () => {
   state.activeCategory = null;

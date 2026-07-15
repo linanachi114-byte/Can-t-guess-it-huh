@@ -107,10 +107,10 @@
               <h2>题库</h2>
               <p class="subtle">管理题库、词条和每个词条的线索。</p>
             </div>
-            <form id="categoryForm" class="inline-form">
-              <input id="newCategoryInput" placeholder="新题库名">
-              <button type="submit">新建题库</button>
-            </form>
+            <button id="openCategoryModalBtn" class="editor-add-button" type="button" title="添加题库">
+              <span class="add-entry-icon" aria-hidden="true">+</span>
+              <span>添加题库</span>
+            </button>
           </div>
 
           <div id="libraryCards" class="library-cards"></div>
@@ -173,6 +173,76 @@
             <button id="entryModalSubmitBtn" type="submit">添加词条</button>
           </div>
         </form>
+      </div>
+
+      <div id="categoryModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="categoryModalTitle">
+        <form id="categoryModalForm" class="entry-modal">
+          <div class="modal-title">
+            <div>
+              <h2 id="categoryModalTitle">添加题库</h2>
+              <p class="subtle">创建一个新的自定义题库。</p>
+            </div>
+            <button id="categoryModalCloseBtn" class="icon-tool danger" type="button" title="关闭" aria-label="关闭">×</button>
+          </div>
+
+          <label class="field-block">
+            <span class="field-label">题库名称：</span>
+            <input id="modalCategoryNameInput" autocomplete="off" required>
+          </label>
+
+          <label class="field-block">
+            <span class="field-label">题库封面：</span>
+            <input id="modalCategoryCoverInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+          </label>
+
+          <div class="modal-actions">
+            <button id="categoryModalCancelBtn" class="text-button" type="button">取消</button>
+            <button id="categoryModalSubmitBtn" type="submit">添加题库</button>
+          </div>
+        </form>
+      </div>
+
+      <div id="categoryEditModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="categoryEditModalTitle">
+        <form id="categoryEditForm" class="entry-modal">
+          <div class="modal-title">
+            <div>
+              <h2 id="categoryEditModalTitle">编辑题库</h2>
+              <p class="subtle">可以修改名称、封面，或删除整个题库。</p>
+            </div>
+            <button id="categoryEditCloseBtn" class="icon-tool danger" type="button" title="关闭" aria-label="关闭">×</button>
+          </div>
+
+          <label class="field-block">
+            <span class="field-label">题库名称：</span>
+            <input id="editCategoryNameInput" autocomplete="off" required>
+          </label>
+
+          <label class="field-block">
+            <span class="field-label">更换封面图：</span>
+            <input id="editCategoryCoverInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+          </label>
+
+          <div class="modal-actions split-actions">
+            <button id="deleteCategoryBtn" class="danger-button" type="button">删除题库</button>
+            <div>
+              <button id="categoryEditCancelBtn" class="text-button" type="button">取消</button>
+              <button id="categoryEditSubmitBtn" type="submit">保存修改</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div id="confirmModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+        <section class="confirm-modal">
+          <div>
+            <h2 id="confirmModalTitle">确认操作</h2>
+            <p id="confirmModalText" class="subtle"></p>
+          </div>
+          <div class="modal-actions">
+            <button id="confirmCancelBtn" class="text-button" type="button">取消</button>
+            <button id="confirmOkBtn" class="danger-button" type="button">确认删除</button>
+          </div>
+        </section>
       </div>
 
       <section id="historyView" class="history-view hidden">

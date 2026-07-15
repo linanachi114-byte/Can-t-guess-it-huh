@@ -540,6 +540,7 @@ button:disabled {
 }
 
 .library-card {
+  position: relative;
   min-height: 230px;
   padding: 0;
   border-radius: 8px;
@@ -549,11 +550,40 @@ button:disabled {
   text-align: left;
   display: grid;
   overflow: hidden;
+  cursor: pointer;
 }
 
-.library-card:hover {
+.library-card:hover,
+.library-card:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 8px 22px rgba(13, 124, 102, 0.1);
+  outline: none;
+}
+
+.library-card-edit {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid rgba(214, 223, 226, 0.86);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--accent-dark);
+  font-size: 19px;
+  font-weight: 900;
+  box-shadow: 0 8px 20px rgba(23, 32, 38, 0.12);
+  cursor: pointer;
+}
+
+.library-card-edit:hover,
+.library-card-edit:focus-visible {
+  border-color: var(--accent);
+  background: white;
+  outline: none;
 }
 
 .library-card strong {
@@ -739,11 +769,6 @@ button:disabled {
   gap: 8px;
 }
 
-.image-path-input {
-  min-height: 38px;
-  font-size: 12px;
-}
-
 .field-block {
   display: grid;
   gap: 6px;
@@ -915,6 +940,21 @@ button:disabled {
   box-shadow: 0 24px 80px rgba(23, 32, 38, 0.24);
 }
 
+.confirm-modal {
+  width: min(440px, 100%);
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 24px 80px rgba(23, 32, 38, 0.24);
+}
+
+.confirm-modal h2 {
+  margin-bottom: 8px;
+}
+
 .modal-title,
 .modal-actions {
   display: flex;
@@ -939,6 +979,17 @@ button:disabled {
 
 .modal-actions {
   justify-content: flex-end;
+}
+
+.split-actions {
+  justify-content: space-between;
+}
+
+.split-actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .clue-chip {

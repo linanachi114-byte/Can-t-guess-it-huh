@@ -20,6 +20,8 @@ const WORD_BANK_PATH = path.join(__dirname, "data", "wordbank.json");
 const GAME_HISTORY_PATH = path.join(__dirname, "data", "game-history.json");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const IMAGE_DIR = path.join(PUBLIC_DIR, "images");
+const CATEGORY_COVER_DIR = path.join(IMAGE_DIR, "category-covers");
+const CATEGORY_COVER_INDEX_PATH = path.join(CATEGORY_COVER_DIR, "index.json");
 const PLACEHOLDER_IMAGE = "/images/placeholder.svg";
 const games = new Map();
 
@@ -60,6 +62,16 @@ async function readGameHistory() {
 
 async function writeGameHistory(history) {
   await writeJson(GAME_HISTORY_PATH, history);
+}
+
+async function readCategoryCovers() {
+  if (!existsSync(CATEGORY_COVER_INDEX_PATH)) return {};
+  return JSON.parse(await readFile(CATEGORY_COVER_INDEX_PATH, "utf8"));
+}
+
+async function writeCategoryCovers(covers) {
+  await mkdir(CATEGORY_COVER_DIR, { recursive: true });
+  await writeJson(CATEGORY_COVER_INDEX_PATH, covers || {});
 }
 
 function normalizeWordBank(rawBank) {
@@ -591,6 +603,89 @@ async function handleApi(req, res) {
     bank[category] = [];
     await writeWordBank(bank);
     sendJson(res, 200, bank);
+    return;
+  }
+
+  if (req.method === "PUT" && url.pathname === "/api/wordbank/category") {
+    const body = await parseBody(req);
+    const oldCategory = requireCategoryName(body.oldCategory);
+    const newCategory = requireCategoryName(body.newCategory);
+    const bank = await readWordBank();
+    if (!bank[oldCategory]) {
+      sendJson(res, 404, { error: "题库不存在。" });
+      return;
+    }
+    if (oldCategory !== newCategory && bank[newCategory]) {
+      sendJson(res, 400, { error: "这个题库名称已经存在。" });
+      return;
+    }
+
+    if (oldCategory !== newCategory) {
+      const nextBank = {};
+      for (const [category, entries] of Object.entries(bank)) {
+        nextBank[category === oldCategory ? newCategory : category] = entries;
+      }
+      await writeWordBank(nextBank);
+
+      const covers = await readCategoryCovers();
+      if (covers[oldCategory]) {
+        covers[newCategory] = covers[oldCategory];
+        delete covers[oldCategory];
+        await writeCategoryCovers(covers);
+      }
+      sendJson(res, 200, nextBank);
+    } else {
+      sendJson(res, 200, bank);
+    }
+    return;
+  }
+
+  if (req.method === "DELETE" && url.pathname === "/api/wordbank/category") {
+    const body = await parseBody(req);
+    const category = requireCategoryName(body.category);
+    const bank = await readWordBank();
+    if (!bank[category]) {
+      sendJson(res, 404, { error: "题库不存在。" });
+      return;
+    }
+    delete bank[category];
+    await writeWordBank(bank);
+
+    const covers = await readCategoryCovers();
+    if (covers[category]) {
+      delete covers[category];
+      await writeCategoryCovers(covers);
+    }
+    sendJson(res, 200, bank);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/wordbank/category-cover") {
+    const { fields, files } = await parseMultipartBody(req);
+    const category = requireCategoryName(fields.category);
+    const file = files.cover;
+    const bank = await readWordBank();
+    if (!bank[category]) {
+      sendJson(res, 404, { error: "题库不存在。" });
+      return;
+    }
+    if (!file?.buffer?.length) {
+      sendJson(res, 400, { error: "请选择一张封面图片。" });
+      return;
+    }
+    if (!isAllowedImageType(file.contentType)) {
+      sendJson(res, 400, { error: "只支持 jpg、png、webp、gif 或 svg 图片。" });
+      return;
+    }
+
+    const ext = contentTypeToExtension(file.contentType);
+    const fileName = `${safePathSegment(category)}.${ext}`;
+    await mkdir(CATEGORY_COVER_DIR, { recursive: true });
+    await writeFile(path.join(CATEGORY_COVER_DIR, fileName), file.buffer);
+    const covers = await readCategoryCovers();
+    covers[category] = `/images/category-covers/${encodeURIComponent(fileName)}`;
+    await writeCategoryCovers(covers);
+    sendJson(res, 200, covers);
     return;
   }
 
