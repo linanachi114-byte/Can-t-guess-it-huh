@@ -19,11 +19,11 @@
         <nav class="main-nav" aria-label="主菜单">
           <button id="gameNavBtn" class="active" type="button">
             <svg aria-hidden="true" class="nav-svg" viewBox="0 0 24 24">
-              <path d="M4.6 6.3h10.8a3.1 3.1 0 0 1 3.1 3.1v2.1a3.1 3.1 0 0 1-3.1 3.1h-4.5l-4.4 3.2v-3.2H4.6a3.1 3.1 0 0 1-3.1-3.1V9.4a3.1 3.1 0 0 1 3.1-3.1z" />
-              <path d="M6.5 9.5h6.8" />
-              <path d="M6.5 12h4" />
-              <circle cx="15.8" cy="14.7" r="2.4" />
-              <path d="M17.5 16.4l2.7 2.7" />
+              <path d="M5 6.5h9.5a2.5 2.5 0 0 1 2.5 2.5v5.2a2.5 2.5 0 0 1-2.5 2.5H9.1L5 19.5v-2.8A2.5 2.5 0 0 1 2.5 14.2V9A2.5 2.5 0 0 1 5 6.5z" />
+              <path d="M8.2 10.1c.5-.9 1.4-1.4 2.7-1.4 1.6 0 2.7.9 2.7 2.2 0 1.1-.7 1.7-1.9 2.1l-.5.2v.9" />
+              <path d="M11.2 16h.1" />
+              <path d="M17.2 5.3l3.9-1.8-1.8 3.9" />
+              <path d="M17.8 6l3.1 3.1" />
             </svg>
             <span>猜词</span>
           </button>
@@ -84,10 +84,7 @@
           </section>
 
           <section id="gamePlayPanel" class="game-stage hidden">
-            <header class="topbar">
-              <div>
-                <h2>本局</h2>
-              </div>
+            <header class="topbar play-toolbar">
               <button id="newGameBtn" class="icon-button" type="button" title="重新选择词库" aria-label="重新选择词库">↻</button>
             </header>
 
@@ -308,10 +305,27 @@
       </div>
 
       <section id="historyView" class="history-view hidden">
-        <section class="library-main">
+        <section id="myHomePanel" class="library-main">
           <div class="panel-title">
             <div>
               <h2>我的</h2>
+            </div>
+          </div>
+          <div class="profile-actions">
+            <button id="openGameHistoryBtn" class="profile-action-card" type="button">
+              <strong>历史记录</strong>
+              <span>查看每一局的提问、猜测和结果。</span>
+            </button>
+          </div>
+        </section>
+
+        <section id="myHistoryPanel" class="library-main hidden">
+          <div class="panel-title editor-heading">
+            <div class="editor-title-group">
+              <button id="backToMyBtn" class="back-button" type="button" title="返回我的" aria-label="返回我的">←</button>
+              <div>
+                <h2>历史记录</h2>
+              </div>
             </div>
             <button id="refreshHistoryBtn" class="text-button" type="button">刷新</button>
           </div>

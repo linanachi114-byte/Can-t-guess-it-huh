@@ -28,6 +28,10 @@ const els = {
   libraryView: document.querySelector("#libraryView"),
   historyView: document.querySelector("#historyView"),
   shareView: document.querySelector("#shareView"),
+  myHomePanel: document.querySelector("#myHomePanel"),
+  myHistoryPanel: document.querySelector("#myHistoryPanel"),
+  openGameHistoryBtn: document.querySelector("#openGameHistoryBtn"),
+  backToMyBtn: document.querySelector("#backToMyBtn"),
   categoryLabel: document.querySelector("#categoryLabel"),
   questionCount: document.querySelector("#questionCount"),
   guessCount: document.querySelector("#guessCount"),
@@ -183,7 +187,7 @@ function setView(view) {
   els.historyView.classList.toggle("hidden", view !== "history");
   els.shareView.classList.toggle("hidden", view !== "share");
   if (view === "library") renderLibrary();
-  if (view === "history") loadGameHistory();
+  if (view === "history") showMyHome();
 }
 
 function setGameStage(stage) {
@@ -193,6 +197,17 @@ function setGameStage(stage) {
   els.gamePlayPanel.classList.toggle("hidden", stage !== "play");
   if (stage === "category") renderCategoryPicker();
   if (stage === "play") renderGame();
+}
+
+function showMyHome() {
+  els.myHomePanel.classList.remove("hidden");
+  els.myHistoryPanel.classList.add("hidden");
+}
+
+async function showMyHistory() {
+  els.myHomePanel.classList.add("hidden");
+  els.myHistoryPanel.classList.remove("hidden");
+  await loadGameHistory();
 }
 
 function formatTime(iso) {
@@ -547,15 +562,13 @@ function renderCategoryPicker() {
   els.categoryList.innerHTML = "";
   categories.forEach((category) => {
     const entries = state.wordbank[category] || [];
-    const label = document.createElement("label");
-    label.className = "category-row";
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "radio";
-    checkbox.name = "gameCategory";
-    checkbox.checked = state.selectedCategories.has(category);
-    checkbox.addEventListener("change", () => {
-      if (checkbox.checked) state.selectedCategories = new Set([category]);
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "category-row";
+    row.classList.toggle("selected", state.selectedCategories.has(category));
+    row.setAttribute("aria-pressed", state.selectedCategories.has(category) ? "true" : "false");
+    row.addEventListener("click", () => {
+      state.selectedCategories = new Set([category]);
       renderCategoryPicker();
       updateCategoryActions();
     });
@@ -564,8 +577,8 @@ function renderCategoryPicker() {
     name.textContent = category;
     const count = document.createElement("small");
     count.textContent = `${entries.length} 个`;
-    label.append(checkbox, name, count);
-    els.categoryList.append(label);
+    row.append(name, count);
+    els.categoryList.append(row);
   });
   updateCategoryActions();
 }
@@ -1513,6 +1526,8 @@ els.playForm.addEventListener("submit", submitTurn);
 els.clueBtn.addEventListener("click", showClue);
 els.revealBtn.addEventListener("click", revealAnswer);
 els.shareBtn.addEventListener("click", shareCurrentGame);
+els.openGameHistoryBtn.addEventListener("click", showMyHistory);
+els.backToMyBtn.addEventListener("click", showMyHome);
 els.refreshHistoryBtn.addEventListener("click", loadGameHistory);
 els.nextShareStepBtn.addEventListener("click", () => {
   state.shareStep += 1;
