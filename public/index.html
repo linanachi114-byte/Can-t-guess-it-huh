@@ -84,24 +84,27 @@
           </section>
 
           <section id="gamePlayPanel" class="game-stage hidden">
-            <header class="topbar play-toolbar">
+            <section class="play-status-row">
+              <section class="status-strip" aria-live="polite">
+                <div>
+                  <span>当前词库</span>
+                  <strong id="categoryLabel">未开始</strong>
+                </div>
+                <div>
+                  <span>提问次数</span>
+                  <strong id="questionCount">0</strong>
+                </div>
+                <div>
+                  <span>猜测次数</span>
+                  <strong id="guessCount">0</strong>
+                </div>
+              </section>
               <button id="newGameBtn" class="icon-button" type="button" title="重新选择词库" aria-label="重新选择词库">↻</button>
-            </header>
-
-            <section class="status-strip" aria-live="polite">
-              <div>
-                <span>当前词库</span>
-                <strong id="categoryLabel">未开始</strong>
-              </div>
-              <div>
-                <span>提问</span>
-                <strong id="questionCount">0</strong>
-              </div>
-              <div>
-                <span>猜测</span>
-                <strong id="guessCount">0</strong>
-              </div>
             </section>
+            <div class="play-action-stack">
+              <button id="clueBtn" class="secondary-button" type="button">查看下一条线索</button>
+              <button id="revealBtn" class="danger-button" type="button">我猜不出来，请公布答案</button>
+            </div>
 
             <section id="hintBanner" class="hint-banner hidden">
               <span>线索</span>
@@ -122,12 +125,10 @@
                 <button id="guessModeBtn" type="button">猜答案</button>
               </div>
               <form id="playForm" class="play-form">
-                <input id="mainInput" autocomplete="off" placeholder="例如：它是人工制品吗？">
+                <input id="mainInput" autocomplete="off" placeholder="先问一个是/否问题">
                 <button id="submitBtn" type="submit">提交</button>
               </form>
-              <div class="action-row">
-                <button id="clueBtn" class="secondary-button" type="button">查看下一条线索</button>
-                <button id="revealBtn" class="danger-button" type="button">我猜不出来，请公布答案</button>
+              <div class="share-row">
                 <button id="shareBtn" class="text-button hidden" type="button">分享本局</button>
               </div>
               <p id="message" class="message"></p>

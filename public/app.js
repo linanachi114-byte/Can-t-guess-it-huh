@@ -1,4 +1,46 @@
 const MAX_CLUES = 5;
+const MOBILE_QUERY = window.matchMedia("(max-width: 920px)");
+const ASK_PLACEHOLDER_PREFIXES = ["它", "这个答案", "你想的词", "目标对象"];
+const ASK_PLACEHOLDER_TRAITS = [
+  "通常能被人拿在手里",
+  "和日常生活关系很近",
+  "属于人工制造的东西",
+  "主要出现在室内",
+  "经常在户外出现",
+  "通常比一个成年人小",
+  "通常比一个成年人大",
+  "和食物或饮品有关",
+  "和交通出行有关",
+  "和学习工作有关",
+  "和艺术作品有关",
+  "和历史人物有关",
+  "在现代社会仍然常见",
+  "需要用电或能源",
+  "通常有固定的形状",
+  "可以被看见或触摸",
+  "和节日或仪式有关",
+  "常出现在影视或游戏里",
+  "名字里可能有两个以上汉字",
+  "更偏自然界而不是人造物",
+  "常被多人一起使用或欣赏",
+  "和运动或身体活动有关",
+  "常见于城市环境",
+  "常见于家庭环境",
+  "有明显的颜色或外观特征",
+  "会发出声音或与声音有关",
+  "常被用来收藏或展示",
+  "通常不是活物",
+  "可能是一个虚构概念或角色",
+  "和水有关",
+  "和动物有关",
+  "和植物有关",
+  "和天气或自然现象有关",
+  "可以作为礼物",
+  "有明确的功能用途"
+];
+const ASK_PLACEHOLDERS = ASK_PLACEHOLDER_TRAITS.flatMap((trait) =>
+  ASK_PLACEHOLDER_PREFIXES.map((prefix) => `${prefix}${trait}吗？`)
+);
 
 const state = {
   game: null,
@@ -11,7 +53,7 @@ const state = {
   mode: "ask",
   view: "game",
   gameStage: "mode",
-  libraryCardMode: "compact",
+  libraryCardMode: MOBILE_QUERY.matches ? "compact" : "large",
   selectedCategories: new Set(),
   activeCategory: null,
   editingCategory: null,
@@ -36,6 +78,7 @@ const els = {
   categoryLabel: document.querySelector("#categoryLabel"),
   questionCount: document.querySelector("#questionCount"),
   guessCount: document.querySelector("#guessCount"),
+  historyPanel: document.querySelector(".history-panel"),
   historyList: document.querySelector("#historyList"),
   emptyHistory: document.querySelector("#emptyHistory"),
   message: document.querySelector("#message"),
@@ -176,8 +219,16 @@ function setMode(mode) {
   state.mode = mode;
   els.askModeBtn.classList.toggle("active", mode === "ask");
   els.guessModeBtn.classList.toggle("active", mode === "guess");
-  els.mainInput.placeholder = mode === "ask" ? "例如：它是人工制品吗？" : "输入你的最终答案";
+  refreshMainInputPlaceholder();
   els.mainInput.focus();
+}
+
+function randomAskPlaceholder() {
+  return ASK_PLACEHOLDERS[Math.floor(Math.random() * ASK_PLACEHOLDERS.length)];
+}
+
+function refreshMainInputPlaceholder() {
+  els.mainInput.placeholder = state.mode === "ask" ? randomAskPlaceholder() : "输入你的最终答案";
 }
 
 function setView(view) {
@@ -357,16 +408,33 @@ function renderGame() {
   els.questionCount.textContent = questionTotal;
   els.guessCount.textContent = guessTotal;
   els.historyList.innerHTML = "";
+  els.historyPanel?.classList?.toggle("empty-state", history.length === 0);
+  els.historyList.classList.toggle("hidden", history.length === 0);
   els.emptyHistory.classList.toggle("hidden", history.length > 0);
 
-  els.hintBanner.classList.toggle("hidden", shownClues.length === 0);
+  els.hintBanner.classList.add("hidden");
   els.hintText.innerHTML = "";
-  shownClues.forEach((clue, index) => {
-    const item = document.createElement("span");
-    item.textContent = `${index + 1}. ${clue}`;
-    els.hintText.append(item);
-  });
-  els.clueBtn.textContent = clueIndex < clueCount ? `查看下一条线索（${clueIndex}/${clueCount}）` : "线索已用完";
+  els.clueBtn.classList.toggle("has-clue", shownClues.length > 0);
+  els.clueBtn.replaceChildren();
+  const clueAction = document.createElement("span");
+  clueAction.className = "clue-button-action";
+  clueAction.textContent = clueIndex < clueCount ? `查看下一条线索（${clueIndex}/${clueCount}）` : "线索已用完";
+  els.clueBtn.append(clueAction);
+  if (shownClues.length > 0) {
+    const clueList = document.createElement("span");
+    clueList.className = "clue-button-list";
+    const label = document.createElement("span");
+    label.textContent = "线索";
+    const items = document.createElement("span");
+    items.className = "clue-button-items";
+    shownClues.forEach((clue, index) => {
+      const item = document.createElement("strong");
+      item.textContent = `${index + 1}. ${clue}`;
+      items.append(item);
+    });
+    clueList.append(label, items);
+    els.clueBtn.append(clueList);
+  }
   els.winBanner.classList.toggle("hidden", !isOver);
   els.bannerTitle.textContent = game?.isWon ? "答案正确" : "已公布答案";
   els.revealedWord.textContent = game?.revealedWord || "";
@@ -615,7 +683,7 @@ function renderLibrary() {
 }
 
 function applyLibraryCardMode() {
-  const compact = state.libraryCardMode === "compact";
+  const compact = MOBILE_QUERY.matches && state.libraryCardMode === "compact";
   els.libraryCards.classList.toggle("compact-mode", compact);
   els.libraryCards.classList.toggle("large-mode", !compact);
   els.compactLibraryModeBtn.classList.toggle("active", compact);
@@ -965,7 +1033,8 @@ async function newGame() {
     body: JSON.stringify({ categories })
   });
   localStorage.setItem("guess-word-game-id", state.game.id);
-  setMessage("新一局开始。AI 已经想好一个词。");
+  setMessage("");
+  refreshMainInputPlaceholder();
   setGameStage("play");
   renderGame();
 }
@@ -1022,7 +1091,7 @@ async function showClue() {
     });
     localStorage.setItem("guess-word-game-id", state.game.id);
     const latest = state.game.history.at(-1);
-    setMessage(latest?.type === "hint" ? `线索：${latest.answer}` : "没有更多线索了。");
+    setMessage(latest?.type === "hint" ? "" : "没有更多线索了。");
     renderGame();
   } catch (error) {
     setMessage(error.message, true);
@@ -1607,7 +1676,9 @@ els.closeEditorBtn.addEventListener("click", () => {
 });
 els.largeLibraryModeBtn.addEventListener("click", () => setLibraryCardMode("large"));
 els.compactLibraryModeBtn.addEventListener("click", () => setLibraryCardMode("compact"));
+MOBILE_QUERY.addEventListener("change", applyLibraryCardMode);
 
+refreshMainInputPlaceholder();
 await loadWordbank();
 renderLibrary();
 setGameStage("mode");

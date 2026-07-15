@@ -271,6 +271,90 @@ h2 {
   font-size: 24px;
 }
 
+.play-status-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.play-status-row .icon-button {
+  align-self: stretch;
+  width: 44px;
+  height: auto;
+  min-height: 44px;
+  border: 1px solid #b7dfd6;
+  background: #edf7f5;
+  color: var(--accent-dark);
+  font-size: 22px;
+}
+
+.play-status-row .icon-button:hover {
+  border-color: var(--accent);
+  background: #e5f3ef;
+}
+
+.play-action-stack {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+
+.play-action-stack button {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 8px;
+}
+
+#clueBtn {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  justify-items: stretch;
+  padding: 12px 18px;
+  border-color: #f0bf6a;
+  background: #fff7e8;
+  color: #7f430a;
+  text-align: center;
+}
+
+.clue-button-action {
+  display: block;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.clue-button-list {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(127, 67, 10, 0.18);
+  text-align: left;
+}
+
+.clue-button-list > span:first-child {
+  color: #8a4b0f;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.clue-button-items {
+  display: grid;
+  gap: 6px;
+  justify-self: end;
+  min-width: 0;
+}
+
+.clue-button-items strong {
+  color: #7f430a;
+  font-size: 18px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
 .status-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -379,6 +463,11 @@ h2 {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.share-row {
+  display: flex;
+  justify-content: flex-start;
 }
 
 input,
@@ -513,6 +602,12 @@ button:disabled {
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 12px;
+}
+
+.history-panel.empty-state {
+  min-height: auto;
+  grid-template-rows: auto auto;
+  gap: 6px;
 }
 
 .history-list {
@@ -687,7 +782,7 @@ button:disabled {
 
 .library-view-mode {
   width: fit-content;
-  display: inline-grid;
+  display: none;
   grid-template-columns: repeat(2, 92px);
   gap: 4px;
   margin-top: 12px;
@@ -1499,7 +1594,6 @@ button:disabled {
     padding: 18px;
   }
 
-  .status-strip,
   .mode-choice-grid,
   .play-form,
   .inline-form,
@@ -1514,6 +1608,45 @@ button:disabled {
     grid-template-columns: 104px minmax(0, 1fr);
     gap: 12px;
     padding: 14px 46px 14px 14px;
+  }
+
+  .status-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .play-status-row {
+    grid-template-columns: minmax(0, 1fr) 40px;
+    gap: 8px;
+  }
+
+  .play-status-row .icon-button {
+    width: 40px;
+    min-height: 40px;
+    font-size: 20px;
+  }
+
+  .play-action-stack button {
+    width: 100%;
+  }
+
+  .status-strip div {
+    padding: 10px 8px;
+    border-right: 1px solid var(--line);
+    border-bottom: 0;
+  }
+
+  .status-strip div:last-child {
+    border-right: 0;
+  }
+
+  .status-strip span {
+    font-size: 11px;
+  }
+
+  .status-strip strong {
+    min-height: 20px;
+    font-size: 15px;
+    overflow-wrap: anywhere;
   }
 
   .entry-image-preview {
@@ -1663,6 +1796,7 @@ button:disabled {
   }
 
   .library-view-mode {
+    display: inline-grid;
     width: 100%;
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1685,12 +1819,4 @@ button:disabled {
     padding: 12px 40px 12px 12px;
   }
 
-  .status-strip div {
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .status-strip div:last-child {
-    border-bottom: 0;
-  }
 }
