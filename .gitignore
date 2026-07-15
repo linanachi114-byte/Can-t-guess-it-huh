@@ -1,4 +1,5 @@
 .env
 data/game-history.json
 node_modules/
+tools/
 .DS_Store

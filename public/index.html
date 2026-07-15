@@ -9,9 +9,12 @@
   <body>
     <main class="shell">
       <header class="app-header">
-        <div>
-          <p class="eyebrow">AI 猜词游戏</p>
-          <h1>猜不到吧</h1>
+        <div class="brand-lockup">
+          <img class="app-logo" src="/images/app-logo.png" alt="" aria-hidden="true">
+          <div>
+            <p class="eyebrow">AI 猜词游戏</p>
+            <h1>猜不到吧</h1>
+          </div>
         </div>
         <nav class="main-nav" aria-label="主菜单">
           <button id="gameNavBtn" class="active" type="button">游戏</button>
@@ -115,21 +118,23 @@
 
         <section id="libraryEditor" class="library-editor hidden">
           <div class="panel-title editor-heading">
-            <button id="closeEditorBtn" class="back-button" type="button" title="返回题库" aria-label="返回题库">←</button>
-            <div>
-              <h2 id="editorTitle">题库详情</h2>
-              <p id="editorMeta" class="subtle"></p>
+            <div class="editor-title-group">
+              <button id="closeEditorBtn" class="back-button" type="button" title="返回题库" aria-label="返回题库">←</button>
+              <div>
+                <h2 id="editorTitle">题库详情</h2>
+                <p id="editorMeta" class="subtle"></p>
+              </div>
             </div>
+            <button id="addEntryBtn" class="editor-add-button" type="button" title="添加词条">
+              <span class="add-entry-icon" aria-hidden="true">+</span>
+              <span>添加词条</span>
+            </button>
           </div>
 
-          <form id="entryForm" class="entry-form">
-            <input id="entryWordInput" placeholder="新词条">
-            <button type="submit">添加词条</button>
-          </form>
           <p id="libraryMessage" class="message"></p>
 
-          <div id="entryPager" class="entry-pager"></div>
           <div id="entryList" class="entry-list"></div>
+          <div id="entryPager" class="entry-pager"></div>
         </section>
       </section>
 

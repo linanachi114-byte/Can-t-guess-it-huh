@@ -53,8 +53,7 @@ const els = {
   editorTitle: document.querySelector("#editorTitle"),
   editorMeta: document.querySelector("#editorMeta"),
   closeEditorBtn: document.querySelector("#closeEditorBtn"),
-  entryForm: document.querySelector("#entryForm"),
-  entryWordInput: document.querySelector("#entryWordInput"),
+  addEntryBtn: document.querySelector("#addEntryBtn"),
   libraryMessage: document.querySelector("#libraryMessage"),
   entryPager: document.querySelector("#entryPager"),
   entryList: document.querySelector("#entryList"),
@@ -475,12 +474,6 @@ function renderEntryPager(category, entryCount, page, totalPages) {
 
   sizeGroup.append(sizeLabel, sizeSelect);
 
-  const start = (page - 1) * state.entryPageSize + 1;
-  const end = Math.min(entryCount, page * state.entryPageSize);
-  const info = document.createElement("span");
-  info.className = "entry-page-info";
-  info.textContent = `${start}-${end} / ${entryCount}`;
-
   const actions = document.createElement("div");
   actions.className = "entry-page-actions";
 
@@ -508,7 +501,7 @@ function renderEntryPager(category, entryCount, page, totalPages) {
   });
 
   actions.append(prevBtn, pageText, nextBtn);
-  els.entryPager.append(sizeGroup, info, actions);
+  els.entryPager.append(sizeGroup, actions);
 }
 
 function renderEditor(category) {
@@ -530,6 +523,9 @@ function renderEditor(category) {
 
     const main = document.createElement("div");
     main.className = "entry-main";
+
+    const content = document.createElement("div");
+    content.className = "entry-content";
 
     const wordField = document.createElement("label");
     wordField.className = "field-block word-field";
@@ -615,7 +611,8 @@ function renderEditor(category) {
     addClueBtn.addEventListener("click", () => addClueInline(clueList, category, index, wordInput.value, imageInput.value));
 
     clueSection.append(clueLabel, clueList, addClueBtn);
-    row.append(imagePanel, main, clueSection);
+    content.append(main, clueSection);
+    row.append(imagePanel, content);
     els.entryList.append(row);
   });
 }
@@ -800,24 +797,20 @@ async function createCategory(event) {
   }
 }
 
-async function addEntry(event) {
-  event.preventDefault();
+async function addEntry() {
   if (!state.activeCategory) return;
-  const word = els.entryWordInput.value.trim();
+  const word = window.prompt("请输入新词条名称：")?.trim();
   if (!word) {
-    setLibraryMessage("词条不能为空。", true);
     return;
   }
 
-  const button = els.entryForm.querySelector("button");
+  const button = els.addEntryBtn;
   button.disabled = true;
-  button.textContent = "生成线索中";
   try {
     const bank = await api("/api/wordbank/entry", {
       method: "POST",
       body: JSON.stringify({ category: state.activeCategory, word, clues: [], image: "" })
     });
-    els.entryWordInput.value = "";
     const entryCount = bank[state.activeCategory]?.length || 0;
     state.entryPages[state.activeCategory] = Math.max(1, Math.ceil(entryCount / state.entryPageSize));
     await refreshWordbank(bank);
@@ -826,7 +819,6 @@ async function addEntry(event) {
     setLibraryMessage(error.message, true);
   } finally {
     button.disabled = false;
-    button.textContent = "添加词条";
   }
 }
 
@@ -1062,7 +1054,7 @@ els.newGameBtn.addEventListener("click", async () => {
   }
 });
 els.categoryForm.addEventListener("submit", createCategory);
-els.entryForm.addEventListener("submit", addEntry);
+els.addEntryBtn.addEventListener("click", addEntry);
 els.closeEditorBtn.addEventListener("click", () => {
   state.activeCategory = null;
   els.libraryMain.classList.remove("hidden");
