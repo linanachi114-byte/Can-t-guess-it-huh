@@ -47,6 +47,7 @@ const state = {
   wordbank: {},
   categoryCovers: {},
   gameHistory: [],
+  activeHistoryRecord: null,
   shareRecord: null,
   shareStep: 0,
   categorySelectionInitialized: false,
@@ -58,6 +59,7 @@ const state = {
   selectedCategories: new Set(),
   activeCategory: null,
   editingCategory: null,
+  editingEntry: null,
   pendingConfirm: null,
   modalEntryClues: [],
   entryPageSize: 10,
@@ -455,7 +457,7 @@ function renderGame() {
     ? shownClues.length > 0
       ? `查看下一条线索（${clueIndex}/${clueCount}）`
       : "没有思路？点此揭示线索"
-    : "线索已用完";
+    : "线索已经全部显示";
   els.clueBtn.append(clueAction);
   if (shownClues.length > 0) {
     const clueList = document.createElement("span");
@@ -544,9 +546,16 @@ function outcomeText(outcome) {
   return "未结束";
 }
 
+function historyOutcomeText(outcome) {
+  if (outcome === "won") return "成功猜出";
+  if (outcome === "revealed") return "没猜出来";
+  return "未结束";
+}
+
 async function loadGameHistory() {
   try {
     state.gameHistory = await api("/api/history");
+    state.activeHistoryRecord = null;
     renderGameHistory();
   } catch (error) {
     els.gameHistoryList.innerHTML = "";
@@ -562,42 +571,147 @@ function renderGameHistory() {
   state.gameHistory.forEach((record) => {
     const card = document.createElement("article");
     card.className = "game-history-card";
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `查看${record.category}案卷`);
+    const openRecord = () => renderHistoryRecordDetail(record);
+    card.addEventListener("click", openRecord);
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openRecord();
+      }
+    });
 
     const title = document.createElement("div");
     title.className = "history-card-title";
     const strong = document.createElement("strong");
-    strong.textContent = `${record.category} · ${outcomeText(record.outcome)}`;
+    strong.textContent = `${record.category} 案卷`;
     const time = document.createElement("span");
     time.textContent = new Date(record.endedAt).toLocaleString("zh-CN");
     title.append(strong, time);
 
-    const meta = document.createElement("p");
-    meta.className = "subtle";
-    meta.textContent = `问题 ${record.questionCount} 轮，猜测 ${record.guessCount} 次，答案：${record.word}`;
+    const hintCount = (record.history || []).filter((item) => item.type === "hint").length;
 
-    const details = document.createElement("ol");
-    details.className = "history-mini-list";
-    (record.history || []).forEach((item) => {
-      const li = document.createElement("li");
-      if (item.type === "question") li.textContent = `问：${item.text} → ${item.answer}`;
-      if (item.type === "guess") li.textContent = `猜：${item.text} → ${item.correct ? "正确" : "错误"}`;
-      if (item.type === "hint") li.textContent = `线索：${item.answer}`;
-      if (item.type === "reveal") li.textContent = `公布答案：${item.answer}`;
-      details.append(li);
+    const stats = document.createElement("div");
+    stats.className = "case-file-stats";
+    [
+      ["提问", `${record.questionCount || 0} 个`],
+      ["猜测", `${record.guessCount || 0} 次`],
+      ["线索", `${hintCount} 条`]
+    ].forEach(([label, value]) => {
+      const item = document.createElement("span");
+      item.innerHTML = `<small>${label}</small><strong>${value}</strong>`;
+      stats.append(item);
     });
 
-    const actions = document.createElement("div");
-    actions.className = "history-actions";
-    const share = document.createElement("button");
-    share.type = "button";
-    share.className = "text-button";
-    share.textContent = "打开分享";
-    share.addEventListener("click", () => openShare(record.id));
-    actions.append(share);
+    const footer = document.createElement("div");
+    footer.className = "case-file-footer";
+    const outcome = document.createElement("span");
+    outcome.className = `case-outcome ${record.outcome === "won" ? "won" : "revealed"}`;
+    outcome.textContent = historyOutcomeText(record.outcome);
+    const answer = document.createElement("strong");
+    answer.textContent = `正确答案：${record.word}`;
+    footer.append(outcome, answer);
 
-    card.append(title, meta, details, actions);
+    card.append(title, stats, footer);
     els.gameHistoryList.append(card);
   });
+}
+
+function renderHistoryRecordDetail(record) {
+  state.activeHistoryRecord = record;
+  els.emptyGameHistory.classList.add("hidden");
+  els.gameHistoryList.innerHTML = "";
+
+  const detail = document.createElement("section");
+  detail.className = "case-detail";
+
+  const topbar = document.createElement("div");
+  topbar.className = "case-detail-topbar";
+  const backBtn = document.createElement("button");
+  backBtn.type = "button";
+  backBtn.className = "back-button";
+  backBtn.title = "返回案卷列表";
+  backBtn.setAttribute("aria-label", "返回案卷列表");
+  backBtn.textContent = "←";
+  backBtn.addEventListener("click", renderGameHistory);
+  const title = document.createElement("div");
+  title.innerHTML = `<p class="eyebrow">案卷详情</p><h2>${record.category}</h2>`;
+  topbar.append(backBtn, title);
+
+  const answerPanel = document.createElement("section");
+  answerPanel.className = `case-answer-panel ${record.outcome === "won" ? "won" : "revealed"}`;
+  const answerCopy = document.createElement("div");
+  const outcome = document.createElement("span");
+  outcome.textContent = historyOutcomeText(record.outcome);
+  const word = document.createElement("strong");
+  word.textContent = record.word;
+  answerCopy.append(outcome, word);
+  const image = document.createElement("img");
+  image.src = record.image || "/images/placeholder.svg";
+  image.alt = `${record.word} 图片`;
+  answerPanel.append(answerCopy, image);
+
+  const hintCount = (record.history || []).filter((item) => item.type === "hint").length;
+  const stats = document.createElement("div");
+  stats.className = "case-file-stats detail-stats";
+  [
+    ["提问", `${record.questionCount || 0} 个`],
+    ["猜测", `${record.guessCount || 0} 次`],
+    ["线索", `${hintCount} 条`],
+    ["结束时间", new Date(record.endedAt).toLocaleString("zh-CN")]
+  ].forEach(([label, value]) => {
+    const item = document.createElement("span");
+    item.innerHTML = `<small>${label}</small><strong>${value}</strong>`;
+    stats.append(item);
+  });
+
+  const timeline = document.createElement("ol");
+  timeline.className = "case-timeline";
+  (record.history || []).forEach((item, index) => {
+    const li = document.createElement("li");
+    li.className = "history-item";
+
+    const meta = document.createElement("div");
+    meta.className = "history-meta";
+    const label = item.type === "question"
+      ? "提问"
+      : item.type === "guess"
+        ? "猜答案"
+        : item.type === "hint"
+          ? "查看线索"
+          : "公布答案";
+    const number = document.createElement("span");
+    number.textContent = `#${index + 1} ${label}`;
+    const time = document.createElement("span");
+    time.textContent = formatTime(item.at);
+    meta.append(number, time);
+
+    const text = document.createElement("p");
+    text.className = "history-text";
+    text.textContent = item.text || (item.type === "hint" ? "查看线索" : "公布答案");
+
+    const result = document.createElement("span");
+    result.className = "answer";
+    if (item.type === "question") {
+      result.textContent = item.answer;
+    } else if (item.type === "guess") {
+      result.textContent = item.correct ? "答案正确" : "答案错误";
+      result.classList.add(item.correct ? "correct" : "wrong");
+    } else if (item.type === "hint") {
+      result.textContent = `线索：${item.answer}`;
+      result.classList.add("hint");
+    } else {
+      result.textContent = `正解：${item.answer}`;
+      result.classList.add("reveal");
+    }
+    li.append(meta, text, result);
+    timeline.append(li);
+  });
+
+  detail.append(topbar, answerPanel, stats, timeline);
+  els.gameHistoryList.append(detail);
 }
 
 async function openShare(id) {
@@ -747,6 +861,7 @@ function renderLibraryCards() {
     card.setAttribute("aria-label", `打开词库 ${category}`);
     const openCategory = () => {
       state.activeCategory = category;
+      state.editingEntry = null;
       state.entryPages[category] = 1;
       clearLibraryMessage();
       renderEditor(category);
@@ -874,8 +989,9 @@ function renderEditor(category) {
 
   visibleEntries.forEach((entry, offset) => {
     const index = startIndex + offset;
+    const isEditing = state.editingEntry?.category === category && state.editingEntry?.index === index;
     const row = document.createElement("article");
-    row.className = "entry-row";
+    row.className = `entry-row${isEditing ? " editing-entry" : " summary-entry"}`;
 
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
@@ -884,6 +1000,55 @@ function renderEditor(category) {
     deleteBtn.setAttribute("aria-label", `删除词条 ${entry.word}`);
     deleteBtn.textContent = "×";
     deleteBtn.addEventListener("click", () => deleteEntry(category, index, entry.word));
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = `entry-edit-button${isEditing ? " active" : ""}`;
+    editBtn.title = isEditing ? "收起编辑" : "编辑词条";
+    editBtn.setAttribute("aria-label", `${isEditing ? "收起编辑" : "编辑词条"} ${entry.word}`);
+    editBtn.textContent = isEditing ? "✓" : "✎";
+    editBtn.addEventListener("click", () => {
+      state.editingEntry = isEditing ? null : { category, index };
+      renderEditor(category);
+    });
+
+    const imagePanel = document.createElement("div");
+    imagePanel.className = "entry-image-panel";
+
+    const imagePreview = document.createElement("img");
+    imagePreview.className = "entry-image-preview";
+    imagePreview.src = entry.image || "/images/placeholder.svg";
+    imagePreview.alt = `${entry.word} 图片`;
+
+    imagePanel.append(imagePreview);
+
+    if (!isEditing) {
+      const summary = document.createElement("div");
+      summary.className = "entry-summary";
+
+      const title = document.createElement("strong");
+      title.className = "entry-summary-title";
+      title.textContent = entry.word || "未命名词条";
+
+      const clueWrap = document.createElement("div");
+      clueWrap.className = "entry-summary-clues";
+      normalizeClues(entry.clues).forEach((clue, clueIndex) => {
+        const clueItem = document.createElement("span");
+        clueItem.textContent = `${clueIndex + 1}. ${clue}`;
+        clueWrap.append(clueItem);
+      });
+      if (!clueWrap.children.length) {
+        const empty = document.createElement("span");
+        empty.className = "empty-clue";
+        empty.textContent = "暂无线索";
+        clueWrap.append(empty);
+      }
+
+      summary.append(title, clueWrap);
+      row.append(deleteBtn, editBtn, imagePanel, summary);
+      els.entryList.append(row);
+      return;
+    }
 
     const main = document.createElement("div");
     main.className = "entry-main";
@@ -910,14 +1075,6 @@ function renderEditor(category) {
 
     const imageInput = { value: entry.image || "" };
 
-    const imagePanel = document.createElement("div");
-    imagePanel.className = "entry-image-panel";
-
-    const imagePreview = document.createElement("img");
-    imagePreview.className = "entry-image-preview";
-    imagePreview.src = entry.image || "/images/placeholder.svg";
-    imagePreview.alt = `${entry.word} 图片`;
-
     const imageTools = document.createElement("div");
     imageTools.className = "entry-image-tools";
 
@@ -938,7 +1095,7 @@ function renderEditor(category) {
     });
 
     imageTools.append(uploadBtn, fileInput);
-    imagePanel.append(imagePreview, imageTools);
+    imagePanel.append(imageTools);
 
     const generateBtn = document.createElement("button");
     generateBtn.type = "button";
@@ -977,7 +1134,7 @@ function renderEditor(category) {
     clueTools.append(addClueBtn, clueLimitNote);
     clueSection.append(clueLabel, clueList, clueTools);
     content.append(main, clueSection);
-    row.append(deleteBtn, imagePanel, content);
+    row.append(deleteBtn, editBtn, imagePanel, content);
     els.entryList.append(row);
   });
 }
@@ -1591,6 +1748,9 @@ async function deleteEntry(category, index, word = "") {
       method: "DELETE",
       body: JSON.stringify({ category, index })
     });
+    if (state.editingEntry?.category === category && state.editingEntry?.index === index) {
+      state.editingEntry = null;
+    }
     await refreshWordbank(bank);
     showToast("已删除词条。");
   } catch (error) {
@@ -1867,6 +2027,7 @@ document.addEventListener("keydown", (event) => {
 });
 els.closeEditorBtn.addEventListener("click", () => {
   state.activeCategory = null;
+  state.editingEntry = null;
   els.libraryMain.classList.remove("hidden");
   els.libraryEditor.classList.add("hidden");
 });
