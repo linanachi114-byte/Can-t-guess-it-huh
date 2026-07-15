@@ -314,8 +314,7 @@ textarea:focus {
 
 .play-form button,
 .inline-form button,
-.entry-form button,
-.entry-main button {
+.modal-actions button[type="submit"] {
   min-height: 46px;
   border-radius: 8px;
   background: var(--accent);
@@ -375,6 +374,41 @@ button:disabled {
 
 .message.error {
   color: var(--danger);
+}
+
+.toast-region {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 60;
+  display: grid;
+  gap: 10px;
+  width: min(420px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast {
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #a7d8ce;
+  background: #edf7f5;
+  color: var(--accent-dark);
+  box-shadow: 0 14px 40px rgba(23, 32, 38, 0.16);
+  font-weight: 900;
+  text-align: center;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.toast.error {
+  border-color: #ffccc7;
+  background: #fff1f0;
+  color: var(--danger);
+}
+
+.toast.leaving {
+  opacity: 0;
+  transform: translateY(8px);
 }
 
 .history-panel {
@@ -500,22 +534,21 @@ button:disabled {
 
 .library-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
   margin-top: 18px;
 }
 
 .library-card {
-  min-height: 132px;
-  padding: 16px;
+  min-height: 230px;
+  padding: 0;
   border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--paper);
   color: var(--ink);
   text-align: left;
   display: grid;
-  align-content: space-between;
-  gap: 10px;
+  overflow: hidden;
 }
 
 .library-card:hover {
@@ -525,6 +558,21 @@ button:disabled {
 
 .library-card strong {
   font-size: 20px;
+}
+
+.library-card-cover {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: white;
+  border-bottom: 1px solid var(--line);
+}
+
+.library-card-body {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 16px;
 }
 
 .library-card span,
@@ -643,11 +691,32 @@ button:disabled {
 }
 
 .entry-row {
+  position: relative;
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
   align-items: start;
   gap: 14px;
-  padding: 16px;
+  padding: 16px 54px 16px 16px;
+}
+
+.entry-delete-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #ffccc7;
+  background: #fff7f6;
+  color: var(--danger);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.entry-delete-button:hover {
+  border-color: var(--danger);
+  background: #fff1f0;
 }
 
 .entry-image-panel {
@@ -790,9 +859,24 @@ button:disabled {
 
 .entry-main {
   display: grid;
-  grid-template-columns: minmax(180px, 340px) 76px 92px 76px;
+  grid-template-columns: minmax(180px, 340px) minmax(220px, max-content);
   gap: 8px;
   align-items: end;
+}
+
+.ai-clue-button {
+  min-height: 46px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid #b7dfd6;
+  background: #edf7f5;
+  color: var(--accent-dark);
+  font-weight: 900;
+}
+
+.ai-clue-button:hover {
+  border-color: var(--accent);
+  background: #e5f3ef;
 }
 
 .entry-clues {
@@ -807,6 +891,54 @@ button:disabled {
 
 .add-clue-button {
   justify-self: start;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(23, 32, 38, 0.34);
+  backdrop-filter: blur(6px);
+}
+
+.entry-modal {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 24px 80px rgba(23, 32, 38, 0.24);
+}
+
+.modal-title,
+.modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.modal-check input {
+  width: 18px;
+  min-height: 18px;
+}
+
+.modal-actions {
+  justify-content: flex-end;
 }
 
 .clue-chip {
@@ -934,13 +1066,22 @@ button:disabled {
   .status-strip,
   .play-form,
   .inline-form,
-  .entry-form,
   .entry-pager,
   .entry-row,
   .entry-main,
+  .modal-actions,
   .clue-chip,
   .share-step {
     grid-template-columns: 1fr;
+  }
+
+  .entry-row {
+    padding-right: 54px;
+  }
+
+  .modal-title,
+  .modal-actions {
+    flex-wrap: wrap;
   }
 
   .entry-main,

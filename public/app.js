@@ -1,6 +1,7 @@
 const state = {
   game: null,
   wordbank: {},
+  categoryCovers: {},
   gameHistory: [],
   shareRecord: null,
   shareStep: 0,
@@ -54,6 +55,15 @@ const els = {
   editorMeta: document.querySelector("#editorMeta"),
   closeEditorBtn: document.querySelector("#closeEditorBtn"),
   addEntryBtn: document.querySelector("#addEntryBtn"),
+  entryModal: document.querySelector("#entryModal"),
+  entryModalForm: document.querySelector("#entryModalForm"),
+  entryModalCloseBtn: document.querySelector("#entryModalCloseBtn"),
+  entryModalCancelBtn: document.querySelector("#entryModalCancelBtn"),
+  entryModalSubmitBtn: document.querySelector("#entryModalSubmitBtn"),
+  modalEntryWordInput: document.querySelector("#modalEntryWordInput"),
+  modalEntryImageInput: document.querySelector("#modalEntryImageInput"),
+  modalEntryCluesInput: document.querySelector("#modalEntryCluesInput"),
+  modalEntryAiCluesInput: document.querySelector("#modalEntryAiCluesInput"),
   libraryMessage: document.querySelector("#libraryMessage"),
   entryPager: document.querySelector("#entryPager"),
   entryList: document.querySelector("#entryList"),
@@ -63,7 +73,8 @@ const els = {
   shareMeta: document.querySelector("#shareMeta"),
   shareSteps: document.querySelector("#shareSteps"),
   nextShareStepBtn: document.querySelector("#nextShareStepBtn"),
-  exitShareBtn: document.querySelector("#exitShareBtn")
+  exitShareBtn: document.querySelector("#exitShareBtn"),
+  toastRegion: document.querySelector("#toastRegion")
 };
 
 async function api(path, options = {}) {
@@ -88,6 +99,17 @@ function setLibraryMessage(text, isError = false) {
 
 function clearLibraryMessage() {
   setLibraryMessage("");
+}
+
+function showToast(text, isError = false) {
+  const item = document.createElement("div");
+  item.className = `toast${isError ? " error" : ""}`;
+  item.textContent = text;
+  els.toastRegion.append(item);
+  window.setTimeout(() => {
+    item.classList.add("leaving");
+    window.setTimeout(() => item.remove(), 180);
+  }, 2600);
 }
 
 function isGameOver() {
@@ -140,6 +162,13 @@ function normalizeClues(clues) {
   return Array.isArray(clues)
     ? clues.map((clue) => String(clue || "").trim()).filter(Boolean)
     : [];
+}
+
+function splitClueText(text) {
+  return String(text || "")
+    .split(/\r?\n|[；;]/)
+    .map((clue) => clue.trim())
+    .filter(Boolean);
 }
 
 function renderGame() {
@@ -424,13 +453,23 @@ function renderLibraryCards() {
       renderEditor(category);
     });
 
+    const cover = document.createElement("img");
+    cover.className = "library-card-cover";
+    cover.src = state.categoryCovers[category] || entries[0]?.image || "/images/placeholder.svg";
+    cover.alt = "";
+    cover.loading = "lazy";
+
+    const body = document.createElement("div");
+    body.className = "library-card-body";
+
     const title = document.createElement("strong");
     title.textContent = category;
     const meta = document.createElement("span");
     meta.textContent = `${entries.length} 个词条`;
     const sample = document.createElement("small");
     sample.textContent = entries.slice(0, 3).map((entry) => entry.word).join("、") || "空题库";
-    card.append(title, meta, sample);
+    body.append(title, meta, sample);
+    card.append(cover, body);
     els.libraryCards.append(card);
   });
 }
@@ -521,6 +560,14 @@ function renderEditor(category) {
     const row = document.createElement("article");
     row.className = "entry-row";
 
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "entry-delete-button";
+    deleteBtn.title = "删除词条";
+    deleteBtn.setAttribute("aria-label", `删除词条 ${entry.word}`);
+    deleteBtn.textContent = "×";
+    deleteBtn.addEventListener("click", () => deleteEntry(category, index, entry.word));
+
     const main = document.createElement("div");
     main.className = "entry-main";
 
@@ -537,12 +584,20 @@ function renderEditor(category) {
     const wordInput = document.createElement("input");
     wordInput.value = entry.word;
     wordInput.placeholder = "词条";
+    wordInput.addEventListener("change", () => {
+      const nextWord = wordInput.value.trim();
+      if (!nextWord || nextWord === entry.word) return;
+      saveEntry(category, index, nextWord, entry.clues, imageInput.value, false);
+    });
     wordField.append(wordLabel, wordInput);
 
     const imageInput = document.createElement("input");
     imageInput.className = "image-path-input";
     imageInput.value = entry.image || "";
     imageInput.placeholder = "图片路径，可留空自动搜索";
+    imageInput.addEventListener("change", () => {
+      saveEntry(category, index, wordInput.value, entry.clues, imageInput.value, false);
+    });
 
     const imagePanel = document.createElement("div");
     imagePanel.className = "entry-image-panel";
@@ -574,24 +629,13 @@ function renderEditor(category) {
     imageTools.append(imageInput, uploadBtn, fileInput);
     imagePanel.append(imagePreview, imageTools);
 
-    const saveBtn = document.createElement("button");
-    saveBtn.type = "button";
-    saveBtn.textContent = "保存";
-    saveBtn.addEventListener("click", () => saveEntry(category, index, wordInput.value, entry.clues, imageInput.value));
-
     const generateBtn = document.createElement("button");
     generateBtn.type = "button";
-    generateBtn.className = "secondary-button";
-    generateBtn.textContent = "AI 线索";
+    generateBtn.className = "ai-clue-button";
+    generateBtn.textContent = "让 AI 重新生成此词条的相关线索";
     generateBtn.addEventListener("click", () => regenerateClues(category, index, wordInput.value, generateBtn));
 
-    const deleteBtn = document.createElement("button");
-    deleteBtn.type = "button";
-    deleteBtn.className = "danger-button compact";
-    deleteBtn.textContent = "删除";
-    deleteBtn.addEventListener("click", () => deleteEntry(category, index));
-
-    main.append(wordField, saveBtn, generateBtn, deleteBtn);
+    main.append(wordField, generateBtn);
 
     const clueSection = document.createElement("section");
     clueSection.className = "entry-clues";
@@ -612,7 +656,7 @@ function renderEditor(category) {
 
     clueSection.append(clueLabel, clueList, addClueBtn);
     content.append(main, clueSection);
-    row.append(imagePanel, content);
+    row.append(deleteBtn, imagePanel, content);
     els.entryList.append(row);
   });
 }
@@ -682,6 +726,12 @@ function renderClueItems(container, category, entryIndex, wordInput, imageInput,
 
 async function loadWordbank() {
   state.wordbank = await api("/api/wordbank");
+  try {
+    const response = await fetch("/images/category-covers/index.json");
+    state.categoryCovers = response.ok ? await response.json() : {};
+  } catch {
+    state.categoryCovers = {};
+  }
   renderCategoryPicker();
 }
 
@@ -797,80 +847,117 @@ async function createCategory(event) {
   }
 }
 
-async function addEntry() {
+function openEntryModal() {
   if (!state.activeCategory) return;
-  const word = window.prompt("请输入新词条名称：")?.trim();
+  clearLibraryMessage();
+  els.entryModalForm.reset();
+  els.modalEntryAiCluesInput.checked = true;
+  els.entryModal.classList.remove("hidden");
+  els.modalEntryWordInput.focus();
+}
+
+function closeEntryModal() {
+  els.entryModal.classList.add("hidden");
+}
+
+async function addEntry(event) {
+  event.preventDefault();
+  if (!state.activeCategory) return;
+
+  const word = els.modalEntryWordInput.value.trim();
+  const imageFile = els.modalEntryImageInput.files?.[0];
+  const manualClues = splitClueText(els.modalEntryCluesInput.value);
   if (!word) {
+    showToast("请填写词条名称。", true);
+    return;
+  }
+  if (!imageFile) {
+    showToast("请为词条选择一张图片。", true);
+    return;
+  }
+  if (!manualClues.length && !els.modalEntryAiCluesInput.checked) {
+    showToast("请填写线索，或勾选让 AI 自动生成。", true);
     return;
   }
 
-  const button = els.addEntryBtn;
+  const button = els.entryModalSubmitBtn;
   button.disabled = true;
+  button.textContent = manualClues.length ? "添加中" : "生成线索中";
   try {
     const bank = await api("/api/wordbank/entry", {
       method: "POST",
-      body: JSON.stringify({ category: state.activeCategory, word, clues: [], image: "" })
+      body: JSON.stringify({ category: state.activeCategory, word, clues: manualClues, image: "" })
     });
     const entryCount = bank[state.activeCategory]?.length || 0;
-    state.entryPages[state.activeCategory] = Math.max(1, Math.ceil(entryCount / state.entryPageSize));
-    await refreshWordbank(bank);
-    setLibraryMessage(`已添加：${word}`);
+    const newIndex = Math.max(0, entryCount - 1);
+    const bankWithImage = await uploadEntryImageFile(state.activeCategory, newIndex, imageFile);
+    state.entryPages[state.activeCategory] = Math.max(1, Math.ceil((bankWithImage[state.activeCategory]?.length || entryCount) / state.entryPageSize));
+    await refreshWordbank(bankWithImage);
+    closeEntryModal();
+    showToast(`已添加：${word}`);
   } catch (error) {
-    setLibraryMessage(error.message, true);
+    showToast(error.message, true);
   } finally {
     button.disabled = false;
+    button.textContent = "添加词条";
   }
+}
+
+async function uploadEntryImageFile(category, index, file) {
+  const formData = new FormData();
+  formData.append("category", category);
+  formData.append("index", String(index));
+  formData.append("image", file);
+
+  const response = await fetch("/api/wordbank/image", {
+    method: "POST",
+    body: formData
+  });
+  const bank = await response.json();
+  if (!response.ok) throw new Error(bank.error || "上传失败");
+  return bank;
 }
 
 async function uploadEntryImage(category, index, file, button) {
   button.disabled = true;
   button.textContent = "上传中";
   try {
-    const formData = new FormData();
-    formData.append("category", category);
-    formData.append("index", String(index));
-    formData.append("image", file);
-
-    const response = await fetch("/api/wordbank/image", {
-      method: "POST",
-      body: formData
-    });
-    const bank = await response.json();
-    if (!response.ok) throw new Error(bank.error || "上传失败");
-
+    const bank = await uploadEntryImageFile(category, index, file);
     await refreshWordbank(bank);
-    setLibraryMessage("图片已更新。");
+    showToast("图片已更新。");
   } catch (error) {
-    setLibraryMessage(error.message, true);
+    showToast(error.message, true);
   } finally {
     button.disabled = false;
     button.textContent = "上传图片";
   }
 }
 
-async function saveEntry(category, index, word, clues, image = "") {
+async function saveEntry(category, index, word, clues, image = "", notify = true) {
   try {
     const bank = await api("/api/wordbank/entry", {
       method: "PUT",
       body: JSON.stringify({ category, index, word, clues: normalizeClues(clues), image })
     });
     await refreshWordbank(bank);
-    setLibraryMessage("已保存。");
+    if (notify) showToast("已保存。");
   } catch (error) {
-    setLibraryMessage(error.message, true);
+    showToast(error.message, true);
   }
 }
 
-async function deleteEntry(category, index) {
+async function deleteEntry(category, index, word = "") {
+  const label = word ? `“${word}”` : "这个词条";
+  if (!window.confirm(`确定要删除${label}吗？此操作不能撤销。`)) return;
   try {
     const bank = await api("/api/wordbank/entry", {
       method: "DELETE",
       body: JSON.stringify({ category, index })
     });
     await refreshWordbank(bank);
-    setLibraryMessage("已删除词条。");
+    showToast("已删除词条。");
   } catch (error) {
-    setLibraryMessage(error.message, true);
+    showToast(error.message, true);
   }
 }
 
@@ -880,7 +967,7 @@ async function updateEntry(category, index, word, clues, message = "已保存。
     body: JSON.stringify({ category, index, word, clues: normalizeClues(clues), image })
   });
   await refreshWordbank(bank);
-  if (message) setLibraryMessage(message);
+  if (message) showToast(message);
   else clearLibraryMessage();
 }
 
@@ -1015,12 +1102,13 @@ async function regenerateClues(category, index, word, button) {
       method: "POST",
       body: JSON.stringify({ category, word: cleanedWord })
     });
-    await updateEntry(category, index, cleanedWord, data.clues || [], "AI 已生成并保存 3 条分层线索。", entry?.image || "");
+    await updateEntry(category, index, cleanedWord, data.clues || [], "", entry?.image || "");
+    showToast("AI 已生成并保存 3 条分层线索");
   } catch (error) {
-    setLibraryMessage(error.message, true);
+    showToast(error.message, true);
   } finally {
     button.disabled = false;
-    button.textContent = "AI 线索";
+    button.textContent = "让 AI 重新生成此词条的相关线索";
   }
 }
 
@@ -1054,7 +1142,16 @@ els.newGameBtn.addEventListener("click", async () => {
   }
 });
 els.categoryForm.addEventListener("submit", createCategory);
-els.addEntryBtn.addEventListener("click", addEntry);
+els.addEntryBtn.addEventListener("click", openEntryModal);
+els.entryModalForm.addEventListener("submit", addEntry);
+els.entryModalCloseBtn.addEventListener("click", closeEntryModal);
+els.entryModalCancelBtn.addEventListener("click", closeEntryModal);
+els.entryModal.addEventListener("click", (event) => {
+  if (event.target === els.entryModal) closeEntryModal();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !els.entryModal.classList.contains("hidden")) closeEntryModal();
+});
 els.closeEditorBtn.addEventListener("click", () => {
   state.activeCategory = null;
   els.libraryMain.classList.remove("hidden");
