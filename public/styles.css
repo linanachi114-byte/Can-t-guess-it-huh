@@ -1418,6 +1418,23 @@ button:disabled {
     flex-direction: column;
   }
 
+  #libraryMain > .panel-title {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 12px;
+  }
+
+  #libraryMain > .panel-title .editor-add-button {
+    justify-self: end;
+    min-height: 40px;
+  }
+
+  #libraryMain > .panel-title .add-entry-icon {
+    width: 40px;
+    height: 40px;
+  }
+
   .main-nav {
     position: fixed;
     left: 0;
@@ -1485,7 +1502,6 @@ button:disabled {
   .play-form,
   .inline-form,
   .entry-pager,
-  .entry-row,
   .entry-main,
   .modal-actions,
   .clue-chip,
@@ -1494,7 +1510,20 @@ button:disabled {
   }
 
   .entry-row {
-    padding-right: 54px;
+    grid-template-columns: 104px minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px 46px 14px 14px;
+  }
+
+  .entry-image-preview {
+    width: 100%;
+    min-height: 104px;
+  }
+
+  .entry-image-tools .secondary-button {
+    min-height: 36px;
+    padding: 0 8px;
+    font-size: 13px;
   }
 
   .modal-title,
@@ -1502,11 +1531,30 @@ button:disabled {
     flex-wrap: wrap;
   }
 
-  .entry-main,
-  .entry-clues,
   .clue-list,
   .add-clue-button {
     grid-column: 1;
+  }
+
+  .entry-content,
+  .entry-clues {
+    min-width: 0;
+  }
+
+  .entry-main {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .word-field {
+    max-width: none;
+  }
+
+  .ai-clue-button {
+    min-height: 38px;
+    padding: 0 10px;
+    font-size: 13px;
+    text-align: left;
   }
 
   .editor-heading {
