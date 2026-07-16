@@ -94,6 +94,7 @@ const els = {
   winBanner: document.querySelector("#winBanner"),
   bannerTitle: document.querySelector("#bannerTitle"),
   revealedWord: document.querySelector("#revealedWord"),
+  revealedSource: document.querySelector("#revealedSource"),
   revealedImage: document.querySelector("#revealedImage"),
   hintBanner: document.querySelector("#hintBanner"),
   hintText: document.querySelector("#hintText"),
@@ -578,6 +579,7 @@ function renderGame() {
   els.winBanner.classList.toggle("revealed", isOver && !game?.isWon);
   els.bannerTitle.textContent = game?.isWon ? "答案正确" : "答案错误";
   els.revealedWord.textContent = game?.revealedWord || "";
+  els.revealedSource.textContent = game?.category ? `来自词库：${game.category}` : "";
   els.revealedImage.classList.toggle("hidden", !game?.revealedImage);
   if (game?.revealedImage) els.revealedImage.src = game.revealedImage;
   els.mainInput.disabled = isOver;
@@ -979,12 +981,16 @@ function renderHistoryRecordDetail(record) {
   image.src = latestWordbankImage(record);
   image.alt = `${record.word} 图片`;
   attachImageFallback(image);
-  answerPanel.append(answerCopy, image);
+  answerPanel.append(image, answerCopy);
 
   const hintCount = (record.history || []).filter((item) => item.type === "hint").length;
   const stats = document.createElement("p");
   stats.className = "history-summary-line detail-summary-line";
-  stats.textContent = `提问 ${record.questionCount || 0} 次，线索 ${hintCount} 条，进行 ${record.guessCount || 0} 次猜测，结束时间：${new Date(record.endedAt).toLocaleString("zh-CN")}`;
+  stats.textContent = `提问 ${record.questionCount || 0} 次，线索 ${hintCount} 条，进行 ${record.guessCount || 0} 次猜测`;
+
+  const endedAt = document.createElement("p");
+  endedAt.className = "history-ended-at";
+  endedAt.textContent = `结束时间：${new Date(record.endedAt).toLocaleString("zh-CN")}`;
 
   const timeline = document.createElement("ol");
   timeline.className = "case-timeline";
@@ -1016,7 +1022,7 @@ function renderHistoryRecordDetail(record) {
     timeline.append(li);
   });
 
-  detail.append(topbar, answerPanel, stats, timeline);
+  detail.append(topbar, answerPanel, stats, endedAt, timeline);
   els.gameHistoryList.append(detail);
 }
 

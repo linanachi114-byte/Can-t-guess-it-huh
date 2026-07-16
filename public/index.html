@@ -101,7 +101,7 @@
                   <strong id="guessCount">0</strong>
                 </div>
               </section>
-              <button id="newGameBtn" class="icon-button" type="button" title="重新选择词库" aria-label="重新选择词库">↻</button>
+              <button id="newGameBtn" class="icon-button" type="button" title="以当前词库重新换词来猜" aria-label="以当前词库重新换词来猜">↻</button>
             </section>
             <div class="play-action-stack">
               <button id="clueBtn" class="secondary-button" type="button">没有思路？点此揭示线索</button>
@@ -113,11 +113,12 @@
             </section>
 
             <section id="winBanner" class="win-banner hidden">
+              <img id="revealedImage" class="revealed-image hidden" alt="答案图片">
               <div>
                 <span id="bannerTitle">答案正确</span>
                 <strong id="revealedWord"></strong>
+                <small id="revealedSource"></small>
               </div>
-              <img id="revealedImage" class="revealed-image hidden" alt="答案图片">
             </section>
 
             <section class="controls">

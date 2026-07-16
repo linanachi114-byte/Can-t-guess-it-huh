@@ -474,6 +474,13 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.win-banner small {
+  color: currentColor;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.78;
+}
+
 .revealed-image {
   width: min(220px, 42vw);
   aspect-ratio: 4 / 3;
@@ -1599,6 +1606,10 @@ button:disabled {
   gap: 12px;
 }
 
+.case-detail-topbar .eyebrow {
+  color: var(--ink);
+}
+
 .case-detail-topbar h2 {
   margin: 0;
   font-size: 18px;
@@ -1615,7 +1626,7 @@ button:disabled {
 
 .case-answer-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(120px, 180px);
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
   align-items: center;
   gap: 16px;
   padding: 16px;
@@ -1661,6 +1672,13 @@ button:disabled {
   border-radius: 8px;
   border: 1px solid rgba(23, 32, 38, 0.12);
   background: white;
+}
+
+.history-ended-at {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
 }
 
 .detail-stats {
@@ -2275,11 +2293,11 @@ button:disabled {
   }
 
   .case-answer-panel {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(96px, 38%) minmax(0, 1fr);
   }
 
   .case-answer-panel img {
-    max-width: 220px;
+    max-width: none;
   }
 
   .game-history-card {
