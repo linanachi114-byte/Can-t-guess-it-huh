@@ -70,15 +70,16 @@
 
           <section id="gameCategoryPanel" class="game-stage hidden">
             <div class="panel-title category-panel-title">
-              <div>
-                <p class="eyebrow">选择词库</p>
-                <h2>本局可用词库</h2>
-                <p class="subtle">请先选择词库，再开始猜词。</p>
+              <div class="editor-title-group">
+                <button id="backToModeBtn" class="back-button" type="button" title="返回模式选择" aria-label="返回模式选择">←</button>
+                <div>
+                  <p class="eyebrow">选择词库</p>
+                  <h2>本局可用词库</h2>
+                </div>
               </div>
             </div>
             <div id="categoryList" class="category-list"></div>
             <div class="stage-actions">
-              <button id="backToModeBtn" class="text-button" type="button">返回模式选择</button>
               <button id="randomCategoryBtn" class="secondary-button" type="button">选择随机词库</button>
               <button id="startSelectedGameBtn" type="button">开始猜词</button>
             </div>
