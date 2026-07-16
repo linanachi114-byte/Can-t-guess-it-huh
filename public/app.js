@@ -798,10 +798,8 @@ function renderGameHistoryCard(record) {
   const title = document.createElement("div");
   title.className = "history-card-title";
   const strong = document.createElement("strong");
-  strong.textContent = `正确答案：${record.word}`;
-  const time = document.createElement("span");
-  time.textContent = new Date(record.endedAt).toLocaleString("zh-CN");
-  title.append(strong, time);
+  strong.textContent = record.word;
+  title.append(strong);
 
   const hintCount = (record.history || []).filter((item) => item.type === "hint").length;
   const stats = document.createElement("p");
@@ -967,7 +965,7 @@ function renderHistoryRecordDetail(record) {
   answerPanel.className = `case-answer-panel ${record.outcome === "won" ? "won" : "revealed"}`;
   const answerCopy = document.createElement("div");
   const answer = document.createElement("strong");
-  answer.textContent = `正确答案：${record.word}`;
+  answer.textContent = record.word;
   const source = document.createElement("small");
   source.textContent = `来自词库：${record.category}`;
   answerCopy.append(answer, source);

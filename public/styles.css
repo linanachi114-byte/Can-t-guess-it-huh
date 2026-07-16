@@ -1567,6 +1567,8 @@ button:disabled {
 
 .case-detail-topbar h2 {
   margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
 }
 
 .case-result-title.won {
@@ -1613,7 +1615,7 @@ button:disabled {
   display: block;
   margin-top: 8px;
   color: currentColor;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 900;
   opacity: 0.78;
 }
