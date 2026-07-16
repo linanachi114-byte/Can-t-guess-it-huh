@@ -569,7 +569,8 @@ function renderGame() {
     els.clueBtn.append(clueList);
   }
   els.winBanner.classList.toggle("hidden", !isOver);
-  els.bannerTitle.textContent = game?.isWon ? "答案正确" : "已公布答案";
+  els.winBanner.classList.toggle("revealed", isOver && !game?.isWon);
+  els.bannerTitle.textContent = game?.isWon ? "答案正确" : "答案错误";
   els.revealedWord.textContent = game?.revealedWord || "";
   els.revealedImage.classList.toggle("hidden", !game?.revealedImage);
   if (game?.revealedImage) els.revealedImage.src = game.revealedImage;
@@ -899,9 +900,9 @@ function renderFavoriteCard(favorite) {
   body.className = "history-record-body";
 
   const title = document.createElement("div");
-  title.className = "history-card-title";
+  title.className = "history-card-title favorite-card-title";
   const strong = document.createElement("strong");
-  strong.textContent = `词条：${favorite.word}`;
+  strong.textContent = favorite.word;
   const time = document.createElement("span");
   time.textContent = new Date(favorite.addedAt).toLocaleString("zh-CN");
   title.append(strong, time);
@@ -912,7 +913,7 @@ function renderFavoriteCard(favorite) {
   stats.textContent = clues.length ? `线索 ${clues.length} 条：${clues.slice(0, 2).join("，")}` : "暂无线索";
 
   const footer = document.createElement("div");
-  footer.className = "case-file-footer";
+  footer.className = "case-file-footer favorite-card-footer";
   const source = document.createElement("strong");
   source.textContent = `来自词库：${favorite.category}`;
   footer.append(source);

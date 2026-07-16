@@ -400,6 +400,22 @@ h2 {
   color: var(--good);
 }
 
+.win-banner.revealed {
+  background: #fff1f0;
+  border-color: #ffccc7;
+  color: var(--danger);
+}
+
+.win-banner > div {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.win-banner span {
+  font-weight: 900;
+}
+
 .favorite-button,
 .locate-button {
   width: 34px;
@@ -443,8 +459,9 @@ h2 {
 
 .hint-banner strong,
 .win-banner strong {
-  font-size: 18px;
+  font-size: 28px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .revealed-image {
@@ -1513,6 +1530,12 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.favorite-card-footer strong {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .case-outcome {
   width: fit-content;
   padding: 5px 10px;
@@ -2165,6 +2188,23 @@ button:disabled {
 
   .play-action-stack button {
     width: 100%;
+  }
+
+  .win-banner {
+    align-items: center;
+  }
+
+  .win-banner strong {
+    font-size: 34px;
+    line-height: 1.15;
+  }
+
+  .share-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #rerollCurrentBtn {
+    grid-column: 1 / -1;
   }
 
   .final-guess-button {
