@@ -310,33 +310,40 @@ h2 {
   text-align: center;
 }
 
+#clueBtn.has-clue {
+  gap: 10px;
+  padding: 14px 26px;
+  text-align: left;
+}
+
 .clue-button-action {
   display: block;
   font-size: 18px;
   line-height: 1.25;
 }
 
-.clue-button-list {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 16px;
-  padding-top: 8px;
+#clueBtn.has-clue .clue-button-action {
+  padding-top: 10px;
   border-top: 1px solid rgba(127, 67, 10, 0.18);
-  text-align: left;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 900;
 }
 
-.clue-button-list > span:first-child {
+.clue-board-title {
   color: #8a4b0f;
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 900;
+  text-align: center;
 }
 
 .clue-button-items {
   display: grid;
-  gap: 6px;
-  justify-self: end;
+  gap: 8px;
+  justify-self: stretch;
   min-width: 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(127, 67, 10, 0.18);
 }
 
 .clue-button-items strong {
@@ -344,7 +351,7 @@ h2 {
   font-size: 18px;
   line-height: 1.35;
   overflow-wrap: anywhere;
-  text-align: right;
+  text-align: left;
 }
 
 .status-strip {
@@ -500,8 +507,14 @@ h2 {
 
 .prompt-input-wrap {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) repeat(3, 40px);
+  grid-template-columns: minmax(0, 1fr) repeat(2, 40px);
   gap: 8px;
+}
+
+.prompt-input-wrap input {
+  grid-column: 1;
+  grid-row: 1;
+  padding-right: 42px;
 }
 
 .prompt-tool-button {
@@ -527,6 +540,22 @@ h2 {
 
 .prompt-tool-button.danger-lite:hover {
   background: #fff1f0;
+}
+
+#clearInputBtn {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+  justify-self: end;
+  width: 26px;
+  min-height: 26px;
+  height: 26px;
+  margin-right: 10px;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 16px;
+  line-height: 1;
+  z-index: 1;
 }
 
 .final-action-row {
@@ -1530,19 +1559,21 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.case-file-footer strong,
 .favorite-card-footer strong {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .case-outcome {
   width: fit-content;
-  padding: 5px 10px;
+  padding: 4px 9px;
   border-radius: 999px;
   color: white;
   background: var(--danger);
-  font-weight: 900;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .case-outcome.won {
@@ -1567,7 +1598,7 @@ button:disabled {
 
 .case-detail-topbar h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: 18px;
   line-height: 1.2;
 }
 
@@ -1616,7 +1647,7 @@ button:disabled {
   margin-top: 8px;
   color: currentColor;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 500;
   opacity: 0.78;
 }
 

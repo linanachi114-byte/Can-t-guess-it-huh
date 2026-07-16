@@ -329,13 +329,19 @@ function refreshMainInputPlaceholder() {
 function useCurrentAskPlaceholder() {
   if (!state.currentAskPlaceholder) refreshMainInputPlaceholder();
   els.mainInput.value = state.currentAskPlaceholder;
+  updateClearInputButton();
   els.mainInput.focus();
 }
 
 function clearQuestionInput() {
   els.mainInput.value = "";
   refreshMainInputPlaceholder();
+  updateClearInputButton();
   els.mainInput.focus();
+}
+
+function updateClearInputButton() {
+  els.clearInputBtn.classList.toggle("hidden", !els.mainInput.value.trim());
 }
 
 function goGameHome() {
@@ -545,19 +551,16 @@ function renderGame() {
   els.hintText.innerHTML = "";
   els.clueBtn.classList.toggle("has-clue", shownClues.length > 0);
   els.clueBtn.replaceChildren();
-  const clueAction = document.createElement("span");
-  clueAction.className = "clue-button-action";
-  clueAction.textContent = clueIndex < clueCount
-    ? shownClues.length > 0
-      ? `查看下一条线索（${clueIndex}/${clueCount}）`
-      : "没有思路？点此揭示线索"
-    : "线索已经全部显示";
-  els.clueBtn.append(clueAction);
-  if (shownClues.length > 0) {
-    const clueList = document.createElement("span");
-    clueList.className = "clue-button-list";
-    const label = document.createElement("span");
-    label.textContent = "线索";
+  if (!shownClues.length) {
+    const clueAction = document.createElement("span");
+    clueAction.className = "clue-button-action";
+    clueAction.textContent = "没有思路？点此揭示线索";
+    els.clueBtn.append(clueAction);
+  } else {
+    const title = document.createElement("span");
+    title.className = "clue-board-title";
+    title.textContent = "线索板";
+
     const items = document.createElement("span");
     items.className = "clue-button-items";
     shownClues.forEach((clue, index) => {
@@ -565,8 +568,11 @@ function renderGame() {
       item.textContent = `${index + 1}. ${clue}`;
       items.append(item);
     });
-    clueList.append(label, items);
-    els.clueBtn.append(clueList);
+
+    const clueAction = document.createElement("span");
+    clueAction.className = "clue-button-action";
+    clueAction.textContent = clueIndex < clueCount ? "查看下一条线索" : "线索已经全部显示";
+    els.clueBtn.append(title, items, clueAction);
   }
   els.winBanner.classList.toggle("hidden", !isOver);
   els.winBanner.classList.toggle("revealed", isOver && !game?.isWon);
@@ -1575,6 +1581,7 @@ async function submitTurn(event) {
       body: JSON.stringify({ gameId: state.game.id, question: text })
     });
     els.mainInput.value = "";
+    updateClearInputButton();
     setMessage("");
     localStorage.setItem("guess-word-game-id", state.game.id);
     renderGame();
@@ -2245,6 +2252,7 @@ els.rerollPromptBtn.addEventListener("click", () => {
   refreshMainInputPlaceholder();
   els.mainInput.focus();
 });
+els.mainInput.addEventListener("input", updateClearInputButton);
 els.usePromptBtn.addEventListener("click", useCurrentAskPlaceholder);
 els.clearInputBtn.addEventListener("click", clearQuestionInput);
 els.finalGuessBtn.addEventListener("click", openFinalGuessModal);
