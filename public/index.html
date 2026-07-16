@@ -116,6 +116,7 @@
                 <span id="bannerTitle">答案正确</span>
                 <strong id="revealedWord"></strong>
               </div>
+              <button id="revealedFavoriteBtn" class="favorite-button revealed-favorite hidden" type="button" title="收藏词条" aria-label="收藏词条">★</button>
               <img id="revealedImage" class="revealed-image hidden" alt="答案图片">
             </section>
 
@@ -342,6 +343,10 @@
             </div>
           </div>
           <div class="profile-actions">
+            <button id="openFavoritesBtn" class="profile-action-card" type="button">
+              <strong>我的收藏</strong>
+              <span>查看你收藏过的词条。</span>
+            </button>
             <button id="openGameHistoryBtn" class="profile-action-card" type="button">
               <strong>历史记录</strong>
               <span>查看每一局的提问、猜测和结果。</span>
@@ -357,10 +362,22 @@
                 <h2>历史记录</h2>
               </div>
             </div>
-            <button id="refreshHistoryBtn" class="text-button" type="button">刷新</button>
           </div>
           <div id="gameHistoryList" class="game-history-list"></div>
           <p id="emptyGameHistory" class="empty">还没有完成的对局。</p>
+        </section>
+
+        <section id="myFavoritesPanel" class="library-main hidden">
+          <div class="panel-title editor-heading">
+            <div class="editor-title-group">
+              <button id="backToMyFromFavoritesBtn" class="back-button" type="button" title="返回我的" aria-label="返回我的">←</button>
+              <div>
+                <h2>我的收藏</h2>
+              </div>
+            </div>
+          </div>
+          <div id="favoriteList" class="game-history-list"></div>
+          <p id="emptyFavorites" class="empty">还没有收藏的词条。</p>
         </section>
       </section>
 

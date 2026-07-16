@@ -400,6 +400,47 @@ h2 {
   color: var(--good);
 }
 
+.favorite-button,
+.locate-button {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--muted);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.favorite-button:hover,
+.favorite-button.active {
+  border-color: #f3cf9a;
+  background: #fff1ba;
+  color: #9d6b00;
+}
+
+.favorite-button.compact,
+.locate-button {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  font-size: 16px;
+}
+
+.locate-button:hover {
+  border-color: #b7dfd6;
+  background: #edf7f5;
+  color: var(--accent-dark);
+}
+
+.revealed-favorite {
+  flex: 0 0 auto;
+}
+
 .hint-banner strong,
 .win-banner strong {
   font-size: 18px;
@@ -1113,7 +1154,12 @@ button:disabled {
   grid-template-columns: 240px minmax(0, 1fr);
   align-items: start;
   gap: 14px;
-  padding: 16px 96px 16px 16px;
+  padding: 16px 138px 16px 16px;
+}
+
+.entry-row.located-entry {
+  border-color: #f3cf9a;
+  box-shadow: 0 0 0 3px rgba(243, 207, 154, 0.28);
 }
 
 .entry-delete-button {
@@ -1156,6 +1202,12 @@ button:disabled {
   border-color: #b7dfd6;
   background: #edf7f5;
   color: var(--accent-dark);
+}
+
+.entry-row > .favorite-button {
+  position: absolute;
+  top: 12px;
+  right: 96px;
 }
 
 .entry-summary {
@@ -1301,6 +1353,18 @@ button:disabled {
   margin-top: 18px;
 }
 
+.history-group {
+  display: grid;
+  gap: 10px;
+}
+
+.history-group-title {
+  margin: 2px 2px -2px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .game-history-card,
 .share-panel,
 .share-step {
@@ -1310,11 +1374,23 @@ button:disabled {
 }
 
 .game-history-card {
+  position: relative;
   display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
   gap: 14px;
-  padding: 16px;
+  padding: 16px 94px 16px 16px;
   cursor: pointer;
   transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.card-corner-tools {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .game-history-card:hover,
@@ -1323,6 +1399,21 @@ button:disabled {
   border-color: #b7dfd6;
   box-shadow: 0 16px 36px rgba(23, 32, 38, 0.08);
   outline: none;
+}
+
+.history-record-thumb {
+  width: 76px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: white;
+}
+
+.history-record-body {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
 }
 
 .history-card-title,
@@ -1337,6 +1428,29 @@ button:disabled {
 .history-card-title span {
   color: var(--muted);
   font-size: 13px;
+}
+
+.history-summary-line {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-load-more {
+  padding: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.detail-summary-line {
+  white-space: normal;
 }
 
 .case-file-stats {
@@ -1987,7 +2101,7 @@ button:disabled {
   .entry-row {
     grid-template-columns: 104px minmax(0, 1fr);
     gap: 12px;
-    padding: 14px 90px 14px 14px;
+    padding: 14px 126px 14px 14px;
   }
 
   .status-strip {
@@ -2046,6 +2160,25 @@ button:disabled {
 
   .case-answer-panel img {
     max-width: 220px;
+  }
+
+  .game-history-card {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px 76px 12px 12px;
+  }
+
+  .history-record-thumb {
+    width: 64px;
+  }
+
+  .history-card-title {
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .history-summary-line {
+    font-size: 13px;
   }
 
   .entry-image-preview {

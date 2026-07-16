@@ -46,7 +46,9 @@ const state = {
   game: null,
   wordbank: {},
   categoryCovers: {},
+  favorites: [],
   gameHistory: [],
+  gameHistoryVisibleCount: 10,
   activeHistoryRecord: null,
   shareRecord: null,
   shareStep: 0,
@@ -60,6 +62,7 @@ const state = {
   activeCategory: null,
   editingCategory: null,
   editingEntry: null,
+  highlightEntry: null,
   pendingConfirm: null,
   modalEntryClues: [],
   entryPageSize: 10,
@@ -76,8 +79,11 @@ const els = {
   shareView: document.querySelector("#shareView"),
   myHomePanel: document.querySelector("#myHomePanel"),
   myHistoryPanel: document.querySelector("#myHistoryPanel"),
+  myFavoritesPanel: document.querySelector("#myFavoritesPanel"),
+  openFavoritesBtn: document.querySelector("#openFavoritesBtn"),
   openGameHistoryBtn: document.querySelector("#openGameHistoryBtn"),
   backToMyBtn: document.querySelector("#backToMyBtn"),
+  backToMyFromFavoritesBtn: document.querySelector("#backToMyFromFavoritesBtn"),
   categoryLabel: document.querySelector("#categoryLabel"),
   questionCount: document.querySelector("#questionCount"),
   guessCount: document.querySelector("#guessCount"),
@@ -89,6 +95,7 @@ const els = {
   bannerTitle: document.querySelector("#bannerTitle"),
   revealedWord: document.querySelector("#revealedWord"),
   revealedImage: document.querySelector("#revealedImage"),
+  revealedFavoriteBtn: document.querySelector("#revealedFavoriteBtn"),
   hintBanner: document.querySelector("#hintBanner"),
   hintText: document.querySelector("#hintText"),
   playForm: document.querySelector("#playForm"),
@@ -166,9 +173,10 @@ const els = {
   libraryMessage: document.querySelector("#libraryMessage"),
   entryPager: document.querySelector("#entryPager"),
   entryList: document.querySelector("#entryList"),
-  refreshHistoryBtn: document.querySelector("#refreshHistoryBtn"),
   gameHistoryList: document.querySelector("#gameHistoryList"),
   emptyGameHistory: document.querySelector("#emptyGameHistory"),
+  favoriteList: document.querySelector("#favoriteList"),
+  emptyFavorites: document.querySelector("#emptyFavorites"),
   shareMeta: document.querySelector("#shareMeta"),
   shareSteps: document.querySelector("#shareSteps"),
   nextShareStepBtn: document.querySelector("#nextShareStepBtn"),
@@ -209,6 +217,78 @@ function showToast(text, isError = false) {
     item.classList.add("leaving");
     window.setTimeout(() => item.remove(), 180);
   }, 2600);
+}
+
+function favoriteKey(category, word) {
+  return `${category}::${word}`;
+}
+
+function loadFavorites() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem("guess-word-favorites") || "[]");
+    state.favorites = Array.isArray(parsed) ? parsed.filter((item) => item?.category && item?.word) : [];
+  } catch {
+    state.favorites = [];
+  }
+}
+
+function saveFavorites() {
+  localStorage.setItem("guess-word-favorites", JSON.stringify(state.favorites));
+}
+
+function isFavorite(category, word) {
+  const key = favoriteKey(category, word);
+  return state.favorites.some((item) => favoriteKey(item.category, item.word) === key);
+}
+
+function favoriteRecord(category, word) {
+  return state.favorites.find((item) => item.category === category && item.word === word);
+}
+
+function entryForFavorite(category, word) {
+  return (state.wordbank[category] || []).find((entry) => entry.word === word);
+}
+
+function favoriteImage(category, word, fallback = "") {
+  const entry = entryForFavorite(category, word);
+  return imageWithFallback(entry?.image || fallback);
+}
+
+function createFavoriteButton(category, word, { showInactive = true, compact = false } = {}) {
+  const active = isFavorite(category, word);
+  if (!active && !showInactive) return null;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `favorite-button${active ? " active" : ""}${compact ? " compact" : ""}`;
+  button.title = active ? "已收藏" : "收藏词条";
+  button.setAttribute("aria-label", active ? `已收藏 ${word}` : `收藏 ${word}`);
+  button.textContent = "★";
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleFavorite(category, word);
+  });
+  return button;
+}
+
+function toggleFavorite(category, word) {
+  const key = favoriteKey(category, word);
+  const index = state.favorites.findIndex((item) => favoriteKey(item.category, item.word) === key);
+  if (index >= 0) {
+    state.favorites.splice(index, 1);
+    showToast(`已取消收藏${word}`);
+  } else {
+    state.favorites.unshift({ category, word, addedAt: new Date().toISOString() });
+    showToast(`您已成功收藏${word}`);
+  }
+  saveFavorites();
+  renderFavoriteDependentViews();
+}
+
+function renderFavoriteDependentViews() {
+  if (state.view === "library" && state.activeCategory) renderEditor(state.activeCategory);
+  if (!els.myFavoritesPanel.classList.contains("hidden")) renderFavorites();
+  if (!els.myHistoryPanel.classList.contains("hidden") && !state.activeHistoryRecord) renderGameHistory();
+  if (state.gameStage === "play") renderGame();
 }
 
 function isGameOver() {
@@ -291,12 +371,22 @@ function setGameStage(stage) {
 function showMyHome() {
   els.myHomePanel.classList.remove("hidden");
   els.myHistoryPanel.classList.add("hidden");
+  els.myFavoritesPanel.classList.add("hidden");
 }
 
 async function showMyHistory() {
   els.myHomePanel.classList.add("hidden");
   els.myHistoryPanel.classList.remove("hidden");
+  els.myFavoritesPanel.classList.add("hidden");
+  state.gameHistoryVisibleCount = 10;
   await loadGameHistory();
+}
+
+function showMyFavorites() {
+  els.myHomePanel.classList.add("hidden");
+  els.myHistoryPanel.classList.add("hidden");
+  els.myFavoritesPanel.classList.remove("hidden");
+  renderFavorites();
 }
 
 function formatTime(iso) {
@@ -489,6 +579,7 @@ function renderGame() {
   els.clueBtn.disabled = isOver || !canShowMoreClues();
   els.shareBtn.classList.toggle("hidden", !isOver || !game?.shareId);
   els.rerollCurrentBtn.classList.toggle("hidden", !isOver || !game?.category);
+  updateRevealedFavoriteButton();
 
   [...history].reverse().forEach((item, index) => {
     const originalIndex = history.length - index;
@@ -534,6 +625,18 @@ function renderGame() {
   });
 }
 
+function updateRevealedFavoriteButton() {
+  const word = state.game?.revealedWord;
+  const category = state.game?.category;
+  const visible = Boolean(isGameOver() && word && category);
+  els.revealedFavoriteBtn.classList.toggle("hidden", !visible);
+  if (!visible) return;
+  const active = isFavorite(category, word);
+  els.revealedFavoriteBtn.classList.toggle("active", active);
+  els.revealedFavoriteBtn.title = active ? "已收藏" : "收藏词条";
+  els.revealedFavoriteBtn.setAttribute("aria-label", active ? `已收藏 ${word}` : `收藏 ${word}`);
+}
+
 function shareableSteps(record) {
   return (record.history || []).filter((item) => (
     item.type === "question" || item.type === "guess" || item.type === "hint" || item.type === "reveal"
@@ -552,10 +655,39 @@ function historyOutcomeText(outcome) {
   return "未结束";
 }
 
+function imageWithFallback(image) {
+  return String(image || "").trim() || "/images/placeholder.svg";
+}
+
+function latestWordbankImage(record) {
+  const entries = state.wordbank[record.category] || [];
+  const entry = entries.find((item) => item.word === record.word);
+  return imageWithFallback(entry?.image || record.image);
+}
+
+function attachImageFallback(imageElement) {
+  imageElement.addEventListener("error", () => {
+    if (imageElement.src.endsWith("/images/placeholder.svg")) return;
+    imageElement.src = "/images/placeholder.svg";
+  }, { once: true });
+}
+
+function historyGroupLabel(iso) {
+  const date = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const key = (value) => value.toLocaleDateString("zh-CN");
+  if (key(date) === key(today)) return "今天";
+  if (key(date) === key(yesterday)) return "昨天";
+  return "更早以前";
+}
+
 async function loadGameHistory() {
   try {
     state.gameHistory = await api("/api/history");
     state.activeHistoryRecord = null;
+    state.gameHistoryVisibleCount = 10;
     renderGameHistory();
   } catch (error) {
     els.gameHistoryList.innerHTML = "";
@@ -567,56 +699,198 @@ async function loadGameHistory() {
 function renderGameHistory() {
   els.gameHistoryList.innerHTML = "";
   els.emptyGameHistory.classList.toggle("hidden", state.gameHistory.length > 0);
+  const visibleRecords = state.gameHistory.slice(0, state.gameHistoryVisibleCount);
+  const groups = ["今天", "昨天", "更早以前"]
+    .map((label) => ({
+      label,
+      records: visibleRecords.filter((record) => historyGroupLabel(record.endedAt) === label)
+    }))
+    .filter((group) => group.records.length);
 
-  state.gameHistory.forEach((record) => {
-    const card = document.createElement("article");
-    card.className = "game-history-card";
-    card.tabIndex = 0;
-    card.setAttribute("role", "button");
-    card.setAttribute("aria-label", `查看${record.category}案卷`);
-    const openRecord = () => renderHistoryRecordDetail(record);
-    card.addEventListener("click", openRecord);
-    card.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        openRecord();
-      }
-    });
-
+  groups.forEach((group) => {
+    const section = document.createElement("section");
+    section.className = "history-group";
     const title = document.createElement("div");
-    title.className = "history-card-title";
-    const strong = document.createElement("strong");
-    strong.textContent = `${record.category} 案卷`;
-    const time = document.createElement("span");
-    time.textContent = new Date(record.endedAt).toLocaleString("zh-CN");
-    title.append(strong, time);
-
-    const hintCount = (record.history || []).filter((item) => item.type === "hint").length;
-
-    const stats = document.createElement("div");
-    stats.className = "case-file-stats";
-    [
-      ["提问", `${record.questionCount || 0} 个`],
-      ["猜测", `${record.guessCount || 0} 次`],
-      ["线索", `${hintCount} 条`]
-    ].forEach(([label, value]) => {
-      const item = document.createElement("span");
-      item.innerHTML = `<small>${label}</small><strong>${value}</strong>`;
-      stats.append(item);
-    });
-
-    const footer = document.createElement("div");
-    footer.className = "case-file-footer";
-    const outcome = document.createElement("span");
-    outcome.className = `case-outcome ${record.outcome === "won" ? "won" : "revealed"}`;
-    outcome.textContent = historyOutcomeText(record.outcome);
-    const answer = document.createElement("strong");
-    answer.textContent = `正确答案：${record.word}`;
-    footer.append(outcome, answer);
-
-    card.append(title, stats, footer);
-    els.gameHistoryList.append(card);
+    title.className = "history-group-title";
+    title.textContent = group.label;
+    section.append(title);
+    group.records.forEach((record) => section.append(renderGameHistoryCard(record)));
+    els.gameHistoryList.append(section);
   });
+
+  if (state.gameHistoryVisibleCount < state.gameHistory.length) {
+    const more = document.createElement("div");
+    more.className = "history-load-more";
+    more.textContent = "继续下滑加载更多";
+    els.gameHistoryList.append(more);
+  }
+}
+
+function renderGameHistoryCard(record) {
+  const card = document.createElement("article");
+  card.className = "game-history-card";
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-label", `查看${record.word}的历史记录`);
+  const openRecord = () => renderHistoryRecordDetail(record);
+  card.addEventListener("click", openRecord);
+  card.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openRecord();
+    }
+  });
+
+  const thumb = document.createElement("img");
+  thumb.className = "history-record-thumb";
+  thumb.src = latestWordbankImage(record);
+  thumb.alt = `${record.word} 图片`;
+  thumb.loading = "lazy";
+  attachImageFallback(thumb);
+
+  const body = document.createElement("div");
+  body.className = "history-record-body";
+
+  const title = document.createElement("div");
+  title.className = "history-card-title";
+  const strong = document.createElement("strong");
+  strong.textContent = `正确答案：${record.word}`;
+  const time = document.createElement("span");
+  time.textContent = new Date(record.endedAt).toLocaleString("zh-CN");
+  title.append(strong, time);
+
+  const hintCount = (record.history || []).filter((item) => item.type === "hint").length;
+  const stats = document.createElement("p");
+  stats.className = "history-summary-line";
+  stats.textContent = `提问 ${record.questionCount || 0} 次，线索 ${hintCount} 条，进行 ${record.guessCount || 0} 次猜测`;
+
+  const footer = document.createElement("div");
+  footer.className = "case-file-footer";
+  const outcome = document.createElement("span");
+  outcome.className = `case-outcome ${record.outcome === "won" ? "won" : "revealed"}`;
+  outcome.textContent = historyOutcomeText(record.outcome);
+  const answer = document.createElement("strong");
+  answer.textContent = `来自词库：${record.category}`;
+  footer.append(outcome, answer);
+
+  const tools = document.createElement("div");
+  tools.className = "card-corner-tools";
+  const favoriteMark = createFavoriteButton(record.category, record.word, { showInactive: false, compact: true });
+  if (favoriteMark) tools.append(favoriteMark);
+  const locateBtn = createLocateButton(record.category, record.word);
+  tools.append(locateBtn);
+
+  body.append(title, stats, footer);
+  card.append(tools, thumb, body);
+  return card;
+}
+
+function createLocateButton(category, word) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "locate-button";
+  button.title = "在词库中查看";
+  button.setAttribute("aria-label", `在词库中查看 ${word}`);
+  button.textContent = "⌖";
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    jumpToLibraryEntry(category, word);
+  });
+  return button;
+}
+
+function jumpToLibraryEntry(category, word) {
+  const entries = state.wordbank[category] || [];
+  const index = entries.findIndex((entry) => entry.word === word);
+  if (index < 0) {
+    showToast("当前词库中找不到这个词条。", true);
+    return;
+  }
+  state.activeCategory = category;
+  state.editingEntry = null;
+  state.highlightEntry = { category, index };
+  state.entryPages[category] = Math.floor(index / state.entryPageSize) + 1;
+  setView("library");
+  renderLibrary();
+  window.setTimeout(() => {
+    const target = document.querySelector(`[data-entry-key="${CSS.escape(favoriteKey(category, word))}"]`);
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 80);
+}
+
+function renderFavorites() {
+  els.favoriteList.innerHTML = "";
+  els.emptyFavorites.classList.toggle("hidden", state.favorites.length > 0);
+  state.favorites.forEach((favorite) => {
+    els.favoriteList.append(renderFavoriteCard(favorite));
+  });
+}
+
+function renderFavoriteCard(favorite) {
+  const entry = entryForFavorite(favorite.category, favorite.word);
+  const card = document.createElement("article");
+  card.className = "game-history-card favorite-card";
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-label", `在词库中查看 ${favorite.word}`);
+  card.addEventListener("click", () => jumpToLibraryEntry(favorite.category, favorite.word));
+  card.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      jumpToLibraryEntry(favorite.category, favorite.word);
+    }
+  });
+
+  const tools = document.createElement("div");
+  tools.className = "card-corner-tools";
+  tools.append(createFavoriteButton(favorite.category, favorite.word, { compact: true }));
+
+  const thumb = document.createElement("img");
+  thumb.className = "history-record-thumb";
+  thumb.src = favoriteImage(favorite.category, favorite.word);
+  thumb.alt = `${favorite.word} 图片`;
+  thumb.loading = "lazy";
+  attachImageFallback(thumb);
+
+  const body = document.createElement("div");
+  body.className = "history-record-body";
+
+  const title = document.createElement("div");
+  title.className = "history-card-title";
+  const strong = document.createElement("strong");
+  strong.textContent = `词条：${favorite.word}`;
+  const time = document.createElement("span");
+  time.textContent = new Date(favorite.addedAt).toLocaleString("zh-CN");
+  title.append(strong, time);
+
+  const clues = normalizeClues(entry?.clues);
+  const stats = document.createElement("p");
+  stats.className = "history-summary-line";
+  stats.textContent = clues.length ? `线索 ${clues.length} 条：${clues.slice(0, 2).join("，")}` : "暂无线索";
+
+  const footer = document.createElement("div");
+  footer.className = "case-file-footer";
+  const outcome = document.createElement("span");
+  outcome.className = "case-outcome won";
+  outcome.textContent = "已收藏";
+  const source = document.createElement("strong");
+  source.textContent = `来自词库：${favorite.category}`;
+  footer.append(outcome, source);
+
+  body.append(title, stats, footer);
+  card.append(tools, thumb, body);
+  return card;
+}
+
+function loadMoreGameHistoryIfNeeded() {
+  if (state.view !== "history") return;
+  if (els.myHistoryPanel.classList.contains("hidden")) return;
+  if (state.activeHistoryRecord) return;
+  if (state.gameHistoryVisibleCount >= state.gameHistory.length) return;
+  const distanceToBottom = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
+  if (distanceToBottom > 260) return;
+  state.gameHistoryVisibleCount = Math.min(state.gameHistory.length, state.gameHistoryVisibleCount + 10);
+  renderGameHistory();
 }
 
 function renderHistoryRecordDetail(record) {
@@ -632,12 +906,12 @@ function renderHistoryRecordDetail(record) {
   const backBtn = document.createElement("button");
   backBtn.type = "button";
   backBtn.className = "back-button";
-  backBtn.title = "返回案卷列表";
-  backBtn.setAttribute("aria-label", "返回案卷列表");
+  backBtn.title = "返回历史记录";
+  backBtn.setAttribute("aria-label", "返回历史记录");
   backBtn.textContent = "←";
   backBtn.addEventListener("click", renderGameHistory);
   const title = document.createElement("div");
-  title.innerHTML = `<p class="eyebrow">案卷详情</p><h2>${record.category}</h2>`;
+  title.innerHTML = `<p class="eyebrow">历史详情</p><h2>正确答案：${record.word}</h2>`;
   topbar.append(backBtn, title);
 
   const answerPanel = document.createElement("section");
@@ -646,26 +920,18 @@ function renderHistoryRecordDetail(record) {
   const outcome = document.createElement("span");
   outcome.textContent = historyOutcomeText(record.outcome);
   const word = document.createElement("strong");
-  word.textContent = record.word;
+  word.textContent = `来自词库：${record.category}`;
   answerCopy.append(outcome, word);
   const image = document.createElement("img");
-  image.src = record.image || "/images/placeholder.svg";
+  image.src = latestWordbankImage(record);
   image.alt = `${record.word} 图片`;
+  attachImageFallback(image);
   answerPanel.append(answerCopy, image);
 
   const hintCount = (record.history || []).filter((item) => item.type === "hint").length;
-  const stats = document.createElement("div");
-  stats.className = "case-file-stats detail-stats";
-  [
-    ["提问", `${record.questionCount || 0} 个`],
-    ["猜测", `${record.guessCount || 0} 次`],
-    ["线索", `${hintCount} 条`],
-    ["结束时间", new Date(record.endedAt).toLocaleString("zh-CN")]
-  ].forEach(([label, value]) => {
-    const item = document.createElement("span");
-    item.innerHTML = `<small>${label}</small><strong>${value}</strong>`;
-    stats.append(item);
-  });
+  const stats = document.createElement("p");
+  stats.className = "history-summary-line detail-summary-line";
+  stats.textContent = `提问 ${record.questionCount || 0} 次，线索 ${hintCount} 条，进行 ${record.guessCount || 0} 次猜测，结束时间：${new Date(record.endedAt).toLocaleString("zh-CN")}`;
 
   const timeline = document.createElement("ol");
   timeline.className = "case-timeline";
@@ -990,8 +1256,10 @@ function renderEditor(category) {
   visibleEntries.forEach((entry, offset) => {
     const index = startIndex + offset;
     const isEditing = state.editingEntry?.category === category && state.editingEntry?.index === index;
+    const isHighlighted = state.highlightEntry?.category === category && state.highlightEntry?.index === index;
     const row = document.createElement("article");
-    row.className = `entry-row${isEditing ? " editing-entry" : " summary-entry"}`;
+    row.className = `entry-row${isEditing ? " editing-entry" : " summary-entry"}${isHighlighted ? " located-entry" : ""}`;
+    row.dataset.entryKey = favoriteKey(category, entry.word);
 
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
@@ -1011,6 +1279,8 @@ function renderEditor(category) {
       state.editingEntry = isEditing ? null : { category, index };
       renderEditor(category);
     });
+
+    const favoriteBtn = createFavoriteButton(category, entry.word, { compact: true });
 
     const imagePanel = document.createElement("div");
     imagePanel.className = "entry-image-panel";
@@ -1045,7 +1315,7 @@ function renderEditor(category) {
       }
 
       summary.append(title, clueWrap);
-      row.append(deleteBtn, editBtn, imagePanel, summary);
+      row.append(deleteBtn, editBtn, favoriteBtn, imagePanel, summary);
       els.entryList.append(row);
       return;
     }
@@ -1134,7 +1404,7 @@ function renderEditor(category) {
     clueTools.append(addClueBtn, clueLimitNote);
     clueSection.append(clueLabel, clueList, clueTools);
     content.append(main, clueSection);
-    row.append(deleteBtn, editBtn, imagePanel, content);
+    row.append(deleteBtn, editBtn, favoriteBtn, imagePanel, content);
     els.entryList.append(row);
   });
 }
@@ -1953,6 +2223,10 @@ els.finalGuessModal.addEventListener("click", (event) => {
 els.clueBtn.addEventListener("click", showClue);
 els.revealBtn.addEventListener("click", revealAnswer);
 els.shareBtn.addEventListener("click", shareCurrentGame);
+els.revealedFavoriteBtn.addEventListener("click", () => {
+  if (!state.game?.category || !state.game?.revealedWord) return;
+  toggleFavorite(state.game.category, state.game.revealedWord);
+});
 els.rerollCurrentBtn.addEventListener("click", async () => {
   try {
     await rerollCurrentCategory();
@@ -1961,8 +2235,10 @@ els.rerollCurrentBtn.addEventListener("click", async () => {
   }
 });
 els.openGameHistoryBtn.addEventListener("click", showMyHistory);
+els.openFavoritesBtn.addEventListener("click", showMyFavorites);
 els.backToMyBtn.addEventListener("click", showMyHome);
-els.refreshHistoryBtn.addEventListener("click", loadGameHistory);
+els.backToMyFromFavoritesBtn.addEventListener("click", showMyHome);
+window.addEventListener("scroll", loadMoreGameHistoryIfNeeded, { passive: true });
 els.nextShareStepBtn.addEventListener("click", () => {
   state.shareStep += 1;
   renderShare();
@@ -2036,6 +2312,7 @@ els.compactLibraryModeBtn.addEventListener("click", () => setLibraryCardMode("co
 MOBILE_QUERY.addEventListener("change", applyLibraryCardMode);
 
 refreshMainInputPlaceholder();
+loadFavorites();
 await loadWordbank();
 renderLibrary();
 setGameStage("mode");
