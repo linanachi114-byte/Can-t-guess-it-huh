@@ -936,7 +936,9 @@ button:disabled {
 
 .profile-action-card {
   display: grid;
-  gap: 6px;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -952,11 +954,32 @@ button:disabled {
   outline: none;
 }
 
+.profile-action-icon {
+  width: 42px;
+  height: 42px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #b7dfd6;
+  background: #edf7f5;
+  color: var(--accent-dark);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.profile-action-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
 .profile-action-card strong {
   font-size: 18px;
 }
 
-.profile-action-card span {
+.profile-action-copy > span {
   color: var(--muted);
   line-height: 1.5;
 }

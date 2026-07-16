@@ -565,7 +565,9 @@ function renderGame() {
   } else {
     const title = document.createElement("span");
     title.className = "clue-board-title";
-    title.textContent = "线索板";
+    title.textContent = clueIndex < clueCount
+      ? `线索板（已展示${clueIndex}/${clueCount}条线索）`
+      : "线索板（已显示全部线索）";
 
     const items = document.createElement("span");
     items.className = "clue-button-items";
@@ -575,10 +577,13 @@ function renderGame() {
       items.append(item);
     });
 
-    const clueAction = document.createElement("span");
-    clueAction.className = "clue-button-action";
-    clueAction.textContent = clueIndex < clueCount ? "查看下一条线索" : "线索已经全部显示";
-    els.clueBtn.append(title, items, clueAction);
+    els.clueBtn.append(title, items);
+    if (clueIndex < clueCount) {
+      const clueAction = document.createElement("span");
+      clueAction.className = "clue-button-action";
+      clueAction.textContent = "查看下一条线索";
+      els.clueBtn.append(clueAction);
+    }
   }
   els.winBanner.classList.toggle("hidden", !isOver);
   els.winBanner.classList.toggle("revealed", isOver && !game?.isWon);
