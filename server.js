@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -136,6 +136,45 @@ function isAllowedImageType(contentType) {
     "image/gif",
     "image/svg+xml"
   ].includes(String(contentType || "").toLowerCase());
+}
+
+function localImageDiskPath(publicPath) {
+  const imagePath = String(publicPath || "").trim();
+  if (!imagePath || imagePath === PLACEHOLDER_IMAGE || !imagePath.startsWith("/images/")) {
+    return null;
+  }
+
+  const segments = imagePath
+    .slice("/images/".length)
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => decodeURIComponent(segment));
+  if (!segments.length) return null;
+
+  const diskPath = path.resolve(IMAGE_DIR, ...segments);
+  const imageRoot = path.resolve(IMAGE_DIR);
+  if (diskPath === imageRoot || !diskPath.startsWith(`${imageRoot}${path.sep}`)) return null;
+  return diskPath;
+}
+
+function isImageReferenced(bank, image) {
+  return Object.values(bank || {}).some((entries) =>
+    (Array.isArray(entries) ? entries : []).some((entry) => entry?.image === image)
+  );
+}
+
+async function removeLocalImageIfUnreferenced(bank, image) {
+  if (!image || isImageReferenced(bank, image)) return;
+  const diskPath = localImageDiskPath(image);
+  if (!diskPath) return;
+  await rm(diskPath, { force: true });
+}
+
+async function removeCategoryImageDirectory(category) {
+  const categoryDir = path.resolve(IMAGE_DIR, safePathSegment(category));
+  const imageRoot = path.resolve(IMAGE_DIR);
+  if (categoryDir === imageRoot || !categoryDir.startsWith(`${imageRoot}${path.sep}`)) return;
+  await rm(categoryDir, { recursive: true, force: true });
 }
 
 async function ensurePlaceholderImage() {
@@ -668,6 +707,7 @@ async function handleApi(req, res) {
     }
     delete bank[category];
     await writeWordBank(bank);
+    await removeCategoryImageDirectory(category);
 
     const covers = await readCategoryCovers();
     if (covers[category]) {
@@ -759,8 +799,9 @@ async function handleApi(req, res) {
       return;
     }
     const index = requireEntryIndex(body.index, entries);
-    entries.splice(index, 1);
+    const [removedEntry] = entries.splice(index, 1);
     await writeWordBank(bank);
+    await removeLocalImageIfUnreferenced(bank, removedEntry?.image);
     sendJson(res, 200, bank);
     return;
   }
