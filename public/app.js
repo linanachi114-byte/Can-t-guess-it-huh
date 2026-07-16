@@ -863,7 +863,7 @@ function createLocateButton(category, word) {
   button.className = "locate-button";
   button.title = "在词库中查看";
   button.setAttribute("aria-label", `在词库中查看 ${word}`);
-  button.textContent = "⌖";
+  button.textContent = "↗";
   button.addEventListener("click", (event) => {
     event.stopPropagation();
     jumpToLibraryEntry(category, word);

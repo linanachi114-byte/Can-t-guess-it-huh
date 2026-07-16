@@ -329,13 +329,13 @@ h2 {
   padding-top: 10px;
   border-top: 1px solid rgba(127, 67, 10, 0.18);
   text-align: center;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 900;
 }
 
 .clue-board-title {
   color: #8a4b0f;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 900;
   text-align: center;
 }
@@ -351,7 +351,7 @@ h2 {
 
 .clue-button-items strong {
   color: #7f430a;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.35;
   overflow-wrap: anywhere;
   text-align: left;
@@ -454,7 +454,7 @@ h2 {
   width: 32px;
   height: 32px;
   min-height: 32px;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .locate-button:hover {
