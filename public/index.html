@@ -116,7 +116,6 @@
                 <span id="bannerTitle">答案正确</span>
                 <strong id="revealedWord"></strong>
               </div>
-              <button id="revealedFavoriteBtn" class="favorite-button revealed-favorite hidden" type="button" title="收藏词条" aria-label="收藏词条">★</button>
               <img id="revealedImage" class="revealed-image hidden" alt="答案图片">
             </section>
 
@@ -136,6 +135,7 @@
               </div>
               <div class="share-row">
                 <button id="shareBtn" class="text-button hidden" type="button">分享本局</button>
+                <button id="favoriteCurrentBtn" class="secondary-button hidden" type="button">收藏此词条</button>
                 <button id="rerollCurrentBtn" class="secondary-button hidden" type="button">以当前词库再来一局</button>
               </div>
               <p id="message" class="message"></p>
@@ -329,8 +329,8 @@
           <div id="finalGuessResult" class="guess-result hidden" aria-live="polite"></div>
 
           <div class="modal-actions final-guess-actions">
-            <button id="finalGuessCancelBtn" class="text-button" type="button">取消</button>
             <button id="finalGuessSubmitBtn" class="danger-button" type="submit">提交最终答案</button>
+            <button id="finalGuessCancelBtn" class="text-button" type="button">取消</button>
           </div>
         </form>
       </div>

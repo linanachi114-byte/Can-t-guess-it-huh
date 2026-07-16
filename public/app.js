@@ -95,9 +95,9 @@ const els = {
   bannerTitle: document.querySelector("#bannerTitle"),
   revealedWord: document.querySelector("#revealedWord"),
   revealedImage: document.querySelector("#revealedImage"),
-  revealedFavoriteBtn: document.querySelector("#revealedFavoriteBtn"),
   hintBanner: document.querySelector("#hintBanner"),
   hintText: document.querySelector("#hintText"),
+  playActionStack: document.querySelector(".play-action-stack"),
   playForm: document.querySelector("#playForm"),
   mainInput: document.querySelector("#mainInput"),
   submitBtn: document.querySelector("#submitBtn"),
@@ -107,7 +107,9 @@ const els = {
   finalGuessBtn: document.querySelector("#finalGuessBtn"),
   clueBtn: document.querySelector("#clueBtn"),
   revealBtn: document.querySelector("#revealBtn"),
+  finalActionRow: document.querySelector(".final-action-row"),
   shareBtn: document.querySelector("#shareBtn"),
+  favoriteCurrentBtn: document.querySelector("#favoriteCurrentBtn"),
   rerollCurrentBtn: document.querySelector("#rerollCurrentBtn"),
   newGameBtn: document.querySelector("#newGameBtn"),
   chooseBankModeBtn: document.querySelector("#chooseBankModeBtn"),
@@ -579,9 +581,13 @@ function renderGame() {
   els.finalGuessBtn.disabled = isOver;
   els.revealBtn.disabled = isOver;
   els.clueBtn.disabled = isOver || !canShowMoreClues();
+  els.playActionStack.classList.toggle("hidden", isOver);
+  els.playForm.classList.toggle("hidden", isOver);
+  els.finalActionRow.classList.toggle("hidden", isOver);
   els.shareBtn.classList.toggle("hidden", !isOver || !game?.shareId);
+  els.favoriteCurrentBtn.classList.toggle("hidden", !isOver || !game?.category || !game?.revealedWord);
   els.rerollCurrentBtn.classList.toggle("hidden", !isOver || !game?.category);
-  updateRevealedFavoriteButton();
+  updateFavoriteCurrentButton();
 
   [...history].reverse().forEach((item, index) => {
     const originalIndex = history.length - index;
@@ -615,16 +621,17 @@ function renderGame() {
   });
 }
 
-function updateRevealedFavoriteButton() {
+function updateFavoriteCurrentButton() {
   const word = state.game?.revealedWord;
   const category = state.game?.category;
   const visible = Boolean(isGameOver() && word && category);
-  els.revealedFavoriteBtn.classList.toggle("hidden", !visible);
+  els.favoriteCurrentBtn.classList.toggle("hidden", !visible);
   if (!visible) return;
   const active = isFavorite(category, word);
-  els.revealedFavoriteBtn.classList.toggle("active", active);
-  els.revealedFavoriteBtn.title = active ? "已收藏" : "收藏词条";
-  els.revealedFavoriteBtn.setAttribute("aria-label", active ? `已收藏 ${word}` : `收藏 ${word}`);
+  els.favoriteCurrentBtn.classList.toggle("active", active);
+  els.favoriteCurrentBtn.textContent = active ? "已收藏此词条" : "收藏此词条";
+  els.favoriteCurrentBtn.title = active ? "取消收藏词条" : "收藏词条";
+  els.favoriteCurrentBtn.setAttribute("aria-label", active ? `取消收藏 ${word}` : `收藏 ${word}`);
 }
 
 function shareableSteps(record) {
@@ -2251,7 +2258,7 @@ els.finalGuessModal.addEventListener("click", (event) => {
 els.clueBtn.addEventListener("click", showClue);
 els.revealBtn.addEventListener("click", revealAnswer);
 els.shareBtn.addEventListener("click", shareCurrentGame);
-els.revealedFavoriteBtn.addEventListener("click", () => {
+els.favoriteCurrentBtn.addEventListener("click", () => {
   if (!state.game?.category || !state.game?.revealedWord) return;
   toggleFavorite(state.game.category, state.game.revealedWord);
 });
