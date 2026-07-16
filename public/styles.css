@@ -1553,6 +1553,15 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.case-answer-panel small {
+  display: block;
+  margin-top: 8px;
+  color: currentColor;
+  font-size: 14px;
+  font-weight: 900;
+  opacity: 0.78;
+}
+
 .case-answer-panel img {
   width: 100%;
   aspect-ratio: 4 / 3;

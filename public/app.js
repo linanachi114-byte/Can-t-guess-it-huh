@@ -184,6 +184,8 @@ const els = {
   toastRegion: document.querySelector("#toastRegion")
 };
 
+let historyLoadMoreObserver = null;
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json" },
@@ -683,6 +685,19 @@ function historyGroupLabel(iso) {
   return "更早以前";
 }
 
+function setHistoryPanelHeaderVisible(visible) {
+  els.myHistoryPanel.querySelector(".panel-title")?.classList.toggle("hidden", !visible);
+}
+
+function observeHistoryLoadMore(element) {
+  if (historyLoadMoreObserver) historyLoadMoreObserver.disconnect();
+  if (!("IntersectionObserver" in window)) return;
+  historyLoadMoreObserver = new IntersectionObserver((entries) => {
+    if (entries.some((entry) => entry.isIntersecting)) loadMoreGameHistoryIfNeeded(true);
+  }, { rootMargin: "160px 0px" });
+  historyLoadMoreObserver.observe(element);
+}
+
 async function loadGameHistory() {
   try {
     state.gameHistory = await api("/api/history");
@@ -697,6 +712,9 @@ async function loadGameHistory() {
 }
 
 function renderGameHistory() {
+  state.activeHistoryRecord = null;
+  setHistoryPanelHeaderVisible(true);
+  if (historyLoadMoreObserver) historyLoadMoreObserver.disconnect();
   els.gameHistoryList.innerHTML = "";
   els.emptyGameHistory.classList.toggle("hidden", state.gameHistory.length > 0);
   const visibleRecords = state.gameHistory.slice(0, state.gameHistoryVisibleCount);
@@ -723,6 +741,7 @@ function renderGameHistory() {
     more.className = "history-load-more";
     more.textContent = "继续下滑加载更多";
     els.gameHistoryList.append(more);
+    observeHistoryLoadMore(more);
   }
 }
 
@@ -870,31 +889,30 @@ function renderFavoriteCard(favorite) {
 
   const footer = document.createElement("div");
   footer.className = "case-file-footer";
-  const outcome = document.createElement("span");
-  outcome.className = "case-outcome won";
-  outcome.textContent = "已收藏";
   const source = document.createElement("strong");
   source.textContent = `来自词库：${favorite.category}`;
-  footer.append(outcome, source);
+  footer.append(source);
 
   body.append(title, stats, footer);
   card.append(tools, thumb, body);
   return card;
 }
 
-function loadMoreGameHistoryIfNeeded() {
+function loadMoreGameHistoryIfNeeded(force = false) {
   if (state.view !== "history") return;
   if (els.myHistoryPanel.classList.contains("hidden")) return;
   if (state.activeHistoryRecord) return;
   if (state.gameHistoryVisibleCount >= state.gameHistory.length) return;
   const distanceToBottom = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
-  if (distanceToBottom > 260) return;
+  if (!force && distanceToBottom > 260) return;
   state.gameHistoryVisibleCount = Math.min(state.gameHistory.length, state.gameHistoryVisibleCount + 10);
   renderGameHistory();
 }
 
 function renderHistoryRecordDetail(record) {
   state.activeHistoryRecord = record;
+  setHistoryPanelHeaderVisible(false);
+  if (historyLoadMoreObserver) historyLoadMoreObserver.disconnect();
   els.emptyGameHistory.classList.add("hidden");
   els.gameHistoryList.innerHTML = "";
 
@@ -919,9 +937,11 @@ function renderHistoryRecordDetail(record) {
   const answerCopy = document.createElement("div");
   const outcome = document.createElement("span");
   outcome.textContent = historyOutcomeText(record.outcome);
-  const word = document.createElement("strong");
-  word.textContent = `来自词库：${record.category}`;
-  answerCopy.append(outcome, word);
+  const answer = document.createElement("strong");
+  answer.textContent = `正确答案：${record.word}`;
+  const source = document.createElement("small");
+  source.textContent = `来自词库：${record.category}`;
+  answerCopy.append(outcome, answer, source);
   const image = document.createElement("img");
   image.src = latestWordbankImage(record);
   image.alt = `${record.word} 图片`;
