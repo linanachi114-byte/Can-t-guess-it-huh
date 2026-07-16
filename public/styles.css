@@ -754,19 +754,31 @@ button:disabled {
 }
 
 .history-text {
+  flex: 1 1 160px;
   margin: 0;
   line-height: 1.55;
+}
+
+.history-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .answer {
   width: fit-content;
   max-width: 100%;
-  padding: 4px 10px;
+  flex: 0 1 auto;
+  padding: 3px 8px;
   border-radius: 999px;
   color: white;
   background: var(--accent-dark);
+  font-size: 12px;
   font-weight: 800;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .answer.wrong {
@@ -1519,6 +1531,14 @@ button:disabled {
 
 .case-detail-topbar h2 {
   margin: 0;
+}
+
+.case-result-title.won {
+  color: var(--good);
+}
+
+.case-result-title.revealed {
+  color: var(--danger);
 }
 
 .case-answer-panel {

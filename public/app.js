@@ -585,44 +585,32 @@ function renderGame() {
 
   [...history].reverse().forEach((item, index) => {
     const originalIndex = history.length - index;
+    const originalHistoryIndex = history.length - index - 1;
     const li = document.createElement("li");
     li.className = "history-item";
 
     const meta = document.createElement("div");
     meta.className = "history-meta";
-    const typeLabel = item.type === "question"
-      ? "提问"
-      : item.type === "guess"
-        ? "猜答案"
-        : item.type === "hint"
-          ? "查看线索"
-          : "公布答案";
 
     const number = document.createElement("span");
-    number.textContent = `#${originalIndex} ${typeLabel}`;
+    number.textContent = `#${originalIndex} ${historyItemLabel(item)}`;
     const time = document.createElement("span");
     time.textContent = formatTime(item.at);
     meta.append(number, time);
 
+    const actionRow = document.createElement("div");
+    actionRow.className = "history-action-row";
+
     const text = document.createElement("p");
     text.className = "history-text";
-    text.textContent = item.text;
+    text.textContent = historyItemAction(item, originalHistoryIndex, history);
 
     const answer = document.createElement("span");
     answer.className = "answer";
-    if (item.type === "question") {
-      answer.textContent = item.answer;
-    } else if (item.type === "guess") {
-      answer.textContent = item.correct ? "答案正确" : "答案错误";
-      answer.classList.add(item.correct ? "correct" : "wrong");
-    } else if (item.type === "hint") {
-      answer.textContent = `线索：${item.answer}`;
-      answer.classList.add("hint");
-    } else {
-      answer.textContent = `正解：${item.answer}`;
-      answer.classList.add("reveal");
-    }
-    li.append(meta, text, answer);
+    answer.textContent = historyItemResult(item);
+    applyHistoryResultClass(answer, item);
+    actionRow.append(text, answer);
+    li.append(meta, actionRow);
     els.historyList.append(li);
   });
 }
@@ -653,8 +641,37 @@ function outcomeText(outcome) {
 
 function historyOutcomeText(outcome) {
   if (outcome === "won") return "成功猜出";
-  if (outcome === "revealed") return "没猜出来";
+  if (outcome === "revealed") return "猜测失败";
   return "未结束";
+}
+
+function historyItemLabel(item) {
+  if (item.type === "question") return "提问";
+  if (item.type === "guess") return "猜答案";
+  if (item.type === "hint") return "查看线索";
+  return "公布答案";
+}
+
+function historyItemAction(item, itemIndex, history) {
+  if (item.type === "hint") {
+    const hintNumber = history.slice(0, itemIndex + 1).filter((historyItem) => historyItem.type === "hint").length;
+    return `查看第 ${hintNumber} 条线索`;
+  }
+  if (item.type === "reveal") return "公布答案";
+  return item.text || historyItemLabel(item);
+}
+
+function historyItemResult(item) {
+  if (item.type === "question") return `AI：${item.answer}`;
+  if (item.type === "guess") return item.correct ? "猜测正确" : "猜测错误";
+  if (item.type === "hint") return `获取线索：${item.answer}`;
+  return `正解：${item.answer}`;
+}
+
+function applyHistoryResultClass(element, item) {
+  if (item.type === "guess") element.classList.add(item.correct ? "correct" : "wrong");
+  if (item.type === "hint") element.classList.add("hint");
+  if (item.type === "reveal") element.classList.add("reveal");
 }
 
 function imageWithFallback(image) {
@@ -929,19 +946,23 @@ function renderHistoryRecordDetail(record) {
   backBtn.textContent = "←";
   backBtn.addEventListener("click", renderGameHistory);
   const title = document.createElement("div");
-  title.innerHTML = `<p class="eyebrow">历史详情</p><h2>正确答案：${record.word}</h2>`;
+  const eyebrow = document.createElement("p");
+  eyebrow.className = "eyebrow";
+  eyebrow.textContent = "历史详情";
+  const resultTitle = document.createElement("h2");
+  resultTitle.className = `case-result-title ${record.outcome === "won" ? "won" : "revealed"}`;
+  resultTitle.textContent = record.outcome === "won" ? "成功猜出" : "猜测失败";
+  title.append(eyebrow, resultTitle);
   topbar.append(backBtn, title);
 
   const answerPanel = document.createElement("section");
   answerPanel.className = `case-answer-panel ${record.outcome === "won" ? "won" : "revealed"}`;
   const answerCopy = document.createElement("div");
-  const outcome = document.createElement("span");
-  outcome.textContent = historyOutcomeText(record.outcome);
   const answer = document.createElement("strong");
   answer.textContent = `正确答案：${record.word}`;
   const source = document.createElement("small");
   source.textContent = `来自词库：${record.category}`;
-  answerCopy.append(outcome, answer, source);
+  answerCopy.append(answer, source);
   const image = document.createElement("img");
   image.src = latestWordbankImage(record);
   image.alt = `${record.word} 图片`;
@@ -961,38 +982,25 @@ function renderHistoryRecordDetail(record) {
 
     const meta = document.createElement("div");
     meta.className = "history-meta";
-    const label = item.type === "question"
-      ? "提问"
-      : item.type === "guess"
-        ? "猜答案"
-        : item.type === "hint"
-          ? "查看线索"
-          : "公布答案";
     const number = document.createElement("span");
-    number.textContent = `#${index + 1} ${label}`;
+    number.textContent = `#${index + 1} ${historyItemLabel(item)}`;
     const time = document.createElement("span");
     time.textContent = formatTime(item.at);
     meta.append(number, time);
 
+    const actionRow = document.createElement("div");
+    actionRow.className = "history-action-row";
+
     const text = document.createElement("p");
     text.className = "history-text";
-    text.textContent = item.text || (item.type === "hint" ? "查看线索" : "公布答案");
+    text.textContent = historyItemAction(item, index, record.history || []);
 
     const result = document.createElement("span");
     result.className = "answer";
-    if (item.type === "question") {
-      result.textContent = item.answer;
-    } else if (item.type === "guess") {
-      result.textContent = item.correct ? "答案正确" : "答案错误";
-      result.classList.add(item.correct ? "correct" : "wrong");
-    } else if (item.type === "hint") {
-      result.textContent = `线索：${item.answer}`;
-      result.classList.add("hint");
-    } else {
-      result.textContent = `正解：${item.answer}`;
-      result.classList.add("reveal");
-    }
-    li.append(meta, text, result);
+    result.textContent = historyItemResult(item);
+    applyHistoryResultClass(result, item);
+    actionRow.append(text, result);
+    li.append(meta, actionRow);
     timeline.append(li);
   });
 
