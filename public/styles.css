@@ -1482,6 +1482,11 @@ button:disabled {
   outline: none;
 }
 
+.game-history-card.highlighted-history-card {
+  border-color: #f3cf9a;
+  box-shadow: 0 0 0 3px rgba(243, 207, 154, 0.32), 0 16px 36px rgba(23, 32, 38, 0.08);
+}
+
 .history-record-thumb {
   width: 76px;
   aspect-ratio: 1 / 1;
@@ -1625,15 +1630,22 @@ button:disabled {
 }
 
 .case-answer-panel {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
   align-items: center;
   gap: 16px;
-  padding: 16px;
+  padding: 16px 58px 16px 16px;
   border-radius: 8px;
   border: 1px solid #bde8cd;
   background: #e8f8ef;
   color: var(--good);
+}
+
+.case-answer-panel > .favorite-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
 }
 
 .case-answer-panel.revealed {

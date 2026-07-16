@@ -50,6 +50,7 @@ const state = {
   gameHistory: [],
   gameHistoryVisibleCount: 10,
   activeHistoryRecord: null,
+  highlightHistoryRecordKey: "",
   shareRecord: null,
   shareStep: 0,
   categorySelectionInitialized: false,
@@ -292,7 +293,11 @@ function toggleFavorite(category, word) {
 function renderFavoriteDependentViews() {
   if (state.view === "library" && state.activeCategory) renderEditor(state.activeCategory);
   if (!els.myFavoritesPanel.classList.contains("hidden")) renderFavorites();
-  if (!els.myHistoryPanel.classList.contains("hidden") && !state.activeHistoryRecord) renderGameHistory();
+  if (!els.myHistoryPanel.classList.contains("hidden") && state.activeHistoryRecord) {
+    renderHistoryRecordDetail(state.activeHistoryRecord);
+  } else if (!els.myHistoryPanel.classList.contains("hidden")) {
+    renderGameHistory();
+  }
   if (state.gameStage === "play") renderGame();
 }
 
@@ -718,6 +723,10 @@ function historyGroupLabel(iso) {
   return "更早以前";
 }
 
+function historyRecordKey(record) {
+  return `${record.shareId || record.id || record.endedAt || ""}::${record.category || ""}::${record.word || ""}`;
+}
+
 function setHistoryPanelHeaderVisible(visible) {
   els.myHistoryPanel.querySelector(".panel-title")?.classList.toggle("hidden", !visible);
 }
@@ -776,11 +785,24 @@ function renderGameHistory() {
     els.gameHistoryList.append(more);
     observeHistoryLoadMore(more);
   }
+
+  if (state.highlightHistoryRecordKey) {
+    window.setTimeout(() => {
+      const selector = `[data-history-key="${CSS.escape(state.highlightHistoryRecordKey)}"]`;
+      const target = els.gameHistoryList.querySelector(selector);
+      state.highlightHistoryRecordKey = "";
+      if (!target) return;
+      target.classList.add("highlighted-history-card");
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => target.classList.remove("highlighted-history-card"), 1600);
+    }, 60);
+  }
 }
 
 function renderGameHistoryCard(record) {
   const card = document.createElement("article");
   card.className = "game-history-card";
+  card.dataset.historyKey = historyRecordKey(record);
   card.tabIndex = 0;
   card.setAttribute("role", "button");
   card.setAttribute("aria-label", `查看${record.word}的历史记录`);
@@ -940,6 +962,11 @@ function loadMoreGameHistoryIfNeeded(force = false) {
   renderGameHistory();
 }
 
+function returnToGameHistoryFromDetail(record) {
+  state.highlightHistoryRecordKey = historyRecordKey(record);
+  renderGameHistory();
+}
+
 function renderHistoryRecordDetail(record) {
   state.activeHistoryRecord = record;
   setHistoryPanelHeaderVisible(false);
@@ -958,7 +985,7 @@ function renderHistoryRecordDetail(record) {
   backBtn.title = "返回历史记录";
   backBtn.setAttribute("aria-label", "返回历史记录");
   backBtn.textContent = "←";
-  backBtn.addEventListener("click", renderGameHistory);
+  backBtn.addEventListener("click", () => returnToGameHistoryFromDetail(record));
   const title = document.createElement("div");
   const eyebrow = document.createElement("p");
   eyebrow.className = "eyebrow";
@@ -981,7 +1008,8 @@ function renderHistoryRecordDetail(record) {
   image.src = latestWordbankImage(record);
   image.alt = `${record.word} 图片`;
   attachImageFallback(image);
-  answerPanel.append(image, answerCopy);
+  const favoriteBtn = createFavoriteButton(record.category, record.word, { compact: true });
+  answerPanel.append(favoriteBtn, image, answerCopy);
 
   const hintCount = (record.history || []).filter((item) => item.type === "hint").length;
   const stats = document.createElement("p");
