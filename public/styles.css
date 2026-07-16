@@ -192,6 +192,41 @@ h2 {
   text-align: left;
 }
 
+.mode-choice-icon {
+  width: 62px;
+  height: 62px;
+  padding: 10px;
+  border-radius: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mode-choice-icon-bank {
+  color: var(--accent-dark);
+  background: linear-gradient(145deg, #e7f5f2, #fff8eb);
+  border: 1px solid #b7dfd6;
+}
+
+.mode-choice-icon-daily {
+  color: #9a5a08;
+  background: linear-gradient(145deg, #fff5df, #edf7f5);
+  border: 1px solid #f0ca84;
+}
+
+.mode-choice-copy {
+  display: grid;
+  gap: 6px;
+  color: var(--ink);
+}
+
+.mode-choice-copy > span {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
 .mode-choice-card:hover,
 .mode-choice-card:focus-visible {
   border-color: var(--accent);
