@@ -57,17 +57,15 @@
             <div class="mode-choice-grid">
               <button id="chooseBankModeBtn" class="mode-choice-card" type="button">
                 <svg aria-hidden="true" class="mode-choice-icon mode-choice-icon-bank" viewBox="0 0 64 64">
-                  <rect x="10" y="13" width="30" height="38" rx="6" />
-                  <path d="M18 22h14" />
-                  <path d="M18 30h11" />
-                  <path d="M18 38h9" />
-                  <rect x="18" y="8" width="30" height="38" rx="6" />
-                  <path d="M26 17h14" />
-                  <path d="M26 25h11" />
-                  <circle cx="43" cy="42" r="8" />
-                  <path d="m49 48 6 6" />
-                  <path d="M40.4 39.2c.7-1.5 2-2.2 3.7-2.2 2 0 3.4 1.2 3.4 3 0 1.5-.9 2.3-2.5 3.1l-1.1.5v1.6" />
-                  <path d="M44 48.4h.1" />
+                  <path d="M13 22.5 30.5 13 48 22.5 30.5 32 13 22.5z" />
+                  <path d="M13 31.5 30.5 41 48 31.5" />
+                  <path d="M13 40.5 30.5 50 48 40.5" />
+                  <path d="M30.5 13v19" />
+                  <path d="M19.5 22.5 30.5 28.4 41.5 22.5" />
+                  <circle cx="47.5" cy="17.5" r="7.5" />
+                  <path d="M45.2 15.5c.5-1 1.4-1.5 2.5-1.5 1.5 0 2.5.9 2.5 2.2 0 1-.6 1.6-1.7 2.1l-.7.4v1" />
+                  <path d="M47.8 22.1h.1" />
+                  <path d="M51.8 23.1 55 26.3" />
                 </svg>
                 <span class="mode-choice-copy">
                   <strong>选择词库</strong>
@@ -99,6 +97,7 @@
                 <div>
                   <p class="eyebrow">选择词库</p>
                   <h2>本局可用词库</h2>
+                  <p class="quick-start-hint">再次点击已选中的词库，可以直接开始猜词。</p>
                 </div>
               </div>
             </div>
@@ -111,6 +110,7 @@
 
           <section id="gamePlayPanel" class="game-stage hidden">
             <section class="play-status-row">
+              <button id="backToCategoryBtn" class="icon-button" type="button" title="返回选择词库" aria-label="返回选择词库">←</button>
               <section class="status-strip" aria-live="polite">
                 <div>
                   <span>当前词库</span>

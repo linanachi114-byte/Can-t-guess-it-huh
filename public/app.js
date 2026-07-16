@@ -113,6 +113,7 @@ const els = {
   shareBtn: document.querySelector("#shareBtn"),
   favoriteCurrentBtn: document.querySelector("#favoriteCurrentBtn"),
   rerollCurrentBtn: document.querySelector("#rerollCurrentBtn"),
+  backToCategoryBtn: document.querySelector("#backToCategoryBtn"),
   newGameBtn: document.querySelector("#newGameBtn"),
   chooseBankModeBtn: document.querySelector("#chooseBankModeBtn"),
   dailyModeBtn: document.querySelector("#dailyModeBtn"),
@@ -315,6 +316,7 @@ function setLoading(isLoading) {
   els.finalGuessBtn.disabled = isLoading || isOver;
   els.revealBtn.disabled = isLoading || isOver;
   els.clueBtn.disabled = isLoading || isOver || !canShowMoreClues();
+  els.backToCategoryBtn.disabled = isLoading;
   els.newGameBtn.disabled = isLoading;
   els.rerollCurrentBtn.disabled = isLoading;
   els.rerollPromptBtn.disabled = isLoading || isOver;
@@ -382,6 +384,14 @@ function setGameStage(stage) {
   els.gamePlayPanel.classList.toggle("hidden", stage !== "play");
   if (stage === "category") renderCategoryPicker();
   if (stage === "play") renderGame();
+}
+
+function returnToCategoryPicker() {
+  if (state.game?.category) {
+    state.selectedCategories = new Set([state.game.category]);
+  }
+  setMessage("");
+  setGameStage("category");
 }
 
 function showMyHome() {
@@ -1139,7 +1149,15 @@ function renderCategoryPicker() {
     row.className = "category-row";
     row.classList.toggle("selected", state.selectedCategories.has(category));
     row.setAttribute("aria-pressed", state.selectedCategories.has(category) ? "true" : "false");
-    row.addEventListener("click", () => {
+    row.addEventListener("click", async () => {
+      if (state.selectedCategories.has(category)) {
+        try {
+          await startNewGame([category]);
+        } catch (error) {
+          showToast(error.message, true);
+        }
+        return;
+      }
       state.selectedCategories = new Set([category]);
       renderCategoryPicker();
       updateCategoryActions();
@@ -2304,6 +2322,7 @@ els.finalGuessModal.addEventListener("click", (event) => {
 els.clueBtn.addEventListener("click", showClue);
 els.revealBtn.addEventListener("click", revealAnswer);
 els.shareBtn.addEventListener("click", shareCurrentGame);
+els.backToCategoryBtn.addEventListener("click", returnToCategoryPicker);
 els.favoriteCurrentBtn.addEventListener("click", () => {
   if (!state.game?.category || !state.game?.revealedWord) return;
   toggleFavorite(state.game.category, state.game.revealedWord);

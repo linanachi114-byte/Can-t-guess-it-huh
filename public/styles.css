@@ -285,6 +285,13 @@ h2 {
   align-items: start;
 }
 
+.quick-start-hint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .panel-actions {
   display: flex;
   gap: 8px;
@@ -303,7 +310,7 @@ h2 {
 
 .play-status-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: stretch;
   gap: 12px;
 }
@@ -2300,7 +2307,7 @@ button:disabled {
   }
 
   .play-status-row {
-    grid-template-columns: minmax(0, 1fr) 40px;
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
     gap: 8px;
   }
 
