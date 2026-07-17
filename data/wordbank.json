@@ -352,15 +352,6 @@
       "image": "/images/%E6%97%A5%E5%B8%B8%E7%89%A9%E5%93%81/%E8%8F%9C%E5%88%80.jpg"
     },
     {
-      "word": "砧板",
-      "clues": [
-        "切菜垫板",
-        "木质或塑料",
-        "厨房必备"
-      ],
-      "image": "/images/%E6%97%A5%E5%B8%B8%E7%89%A9%E5%93%81/%E7%A0%A7%E6%9D%BF.jpg"
-    },
-    {
       "word": "碗",
       "clues": [
         "盛装食物",
@@ -413,15 +404,6 @@
         "外出佩戴"
       ],
       "image": "/images/%E6%97%A5%E5%B8%B8%E7%89%A9%E5%93%81/%E5%B8%BD%E5%AD%90.jpg"
-    },
-    {
-      "word": "皮夹",
-      "clues": [
-        "装钱物品",
-        "折叠设计",
-        "随身携带"
-      ],
-      "image": "/images/%E6%97%A5%E5%B8%B8%E7%89%A9%E5%93%81/%E7%9A%AE%E5%A4%B9.jpg"
     },
     {
       "word": "打火机",
@@ -822,15 +804,6 @@
       "image": "/images/%E8%87%AA%E7%84%B6%E4%B8%8E%E7%94%9F%E7%89%A9/%E5%86%B0%E5%B7%9D.jpg"
     },
     {
-      "word": "地震",
-      "clues": [
-        "自然灾害",
-        "地面会震动",
-        "可造成建筑损坏"
-      ],
-      "image": "/images/%E8%87%AA%E7%84%B6%E4%B8%8E%E7%94%9F%E7%89%A9/%E5%9C%B0%E9%9C%87.jpg"
-    },
-    {
       "word": "台风",
       "clues": [
         "天气系统",
@@ -1157,15 +1130,6 @@
       "image": "/images/%E9%A3%9F%E7%89%A9%E9%A5%AE%E5%93%81/%E7%B3%96%E8%91%AB%E8%8A%A6.jpg"
     },
     {
-      "word": "麻婆豆腐",
-      "clues": [
-        "豆腐入菜",
-        "麻辣味浓",
-        "川菜代表"
-      ],
-      "image": "/images/%E9%A3%9F%E7%89%A9%E9%A5%AE%E5%93%81/%E9%BA%BB%E5%A9%86%E8%B1%86%E8%85%90.jpg"
-    },
-    {
       "word": "烤串",
       "clues": [
         "炭火烤制",
@@ -1256,15 +1220,6 @@
       "image": "/images/%E9%A3%9F%E7%89%A9%E9%A5%AE%E5%93%81/%E6%9E%9C%E8%8C%B6.jpg"
     },
     {
-      "word": "珍珠奶茶",
-      "clues": [
-        "吸管饮用",
-        "弹牙颗粒",
-        "甜饮代表"
-      ],
-      "image": "/images/%E9%A3%9F%E7%89%A9%E9%A5%AE%E5%93%81/%E7%8F%8D%E7%8F%A0%E5%A5%B6%E8%8C%B6.jpg"
-    },
-    {
       "word": "咖啡",
       "clues": [
         "苦涩香气",
@@ -1310,24 +1265,6 @@
       "image": "/images/%E9%A3%9F%E7%89%A9%E9%A5%AE%E5%93%81/%E8%9C%82%E8%9C%9C.jpg"
     },
     {
-      "word": "柠檬水",
-      "clues": [
-        "酸味饮品",
-        "加糖解渴",
-        "清凉夏季"
-      ],
-      "image": "/images/%E9%A3%9F%E7%89%A9%E9%A5%AE%E5%93%81/%E6%9F%A0%E6%AA%AC%E6%B0%B4.jpg"
-    },
-    {
-      "word": "冰淇淋蛋糕",
-      "clues": [
-        "冷冻甜点",
-        "多层结构",
-        "生日常见"
-      ],
-      "image": "/images/%E9%A3%9F%E7%89%A9%E9%A5%AE%E5%93%81/%E5%86%B0%E6%B7%87%E6%B7%8B%E8%9B%8B%E7%B3%95.jpg"
-    },
-    {
       "word": "果冻",
       "clues": [
         "弹滑口感",
@@ -1344,15 +1281,6 @@
         "零食首选"
       ],
       "image": "/images/%E9%A3%9F%E7%89%A9%E9%A5%AE%E5%93%81/%E9%A5%BC%E5%B9%B2.jpg"
-    },
-    {
-      "word": "薯片",
-      "clues": [
-        "薄脆片状",
-        "油炸加工",
-        "袋装零食"
-      ],
-      "image": "/images/%E9%A3%9F%E7%89%A9%E9%A5%AE%E5%93%81/%E8%96%AF%E7%89%87.jpg"
     }
   ],
   "地点": [
@@ -1627,15 +1555,6 @@
       "image": "/images/%E5%9C%B0%E7%82%B9/%E6%95%99%E5%A0%82.jpg"
     },
     {
-      "word": "警察训练场",
-      "clues": [
-        "体能训练",
-        "战术演练",
-        "障碍物"
-      ],
-      "image": "/images/%E5%9C%B0%E7%82%B9/%E8%AD%A6%E5%AF%9F%E8%AE%AD%E7%BB%83%E5%9C%BA.jpg"
-    },
-    {
       "word": "游泳馆",
       "clues": [
         "泳池赛道",
@@ -1661,15 +1580,6 @@
         "弧形结构"
       ],
       "image": "/images/%E5%9C%B0%E7%82%B9/%E9%B8%9F%E5%B7%A2%E4%BD%93%E8%82%B2%E9%A6%86.jpg"
-    },
-    {
-      "word": "摩天观景塔",
-      "clues": [
-        "高空俯瞰",
-        "全景视野",
-        "玻璃地板"
-      ],
-      "image": "/images/%E5%9C%B0%E7%82%B9/%E6%91%A9%E5%A4%A9%E8%A7%82%E6%99%AF%E5%A1%94.jpg"
     },
     {
       "word": "废品回收站",
@@ -1787,15 +1697,6 @@
         "冰刀声"
       ],
       "image": "/images/%E5%9C%B0%E7%82%B9/%E5%86%B0%E5%9C%BA.jpg"
-    },
-    {
-      "word": "隧道",
-      "clues": [
-        "地下通道",
-        "汽车行驶",
-        "幽暗灯光"
-      ],
-      "image": "/images/%E5%9C%B0%E7%82%B9/%E9%9A%A7%E9%81%93.jpg"
     },
     {
       "word": "码头",
@@ -2270,15 +2171,6 @@
       "image": "/images/%E5%90%8D%E4%BA%BA/%E7%88%B1%E5%9B%A0%E6%96%AF%E5%9D%A6.jpg"
     },
     {
-      "word": "达芬奇",
-      "clues": [
-        "文艺复兴人物",
-        "擅长绘画",
-        "画作《蒙娜丽莎》"
-      ],
-      "image": "/images/%E5%90%8D%E4%BA%BA/%E8%BE%BE%E8%8A%AC%E5%A5%87.png"
-    },
-    {
       "word": "居里夫人",
       "clues": [
         "科学家",
@@ -2304,15 +2196,6 @@
         "作品《罗密欧与朱丽叶》"
       ],
       "image": "/images/%E5%90%8D%E4%BA%BA/%E8%8E%8E%E5%A3%AB%E6%AF%94%E4%BA%9A.jpg"
-    },
-    {
-      "word": "苏轼",
-      "clues": [
-        "古代文人",
-        "宋代官员",
-        "写过《水调歌头》"
-      ],
-      "image": "/images/%E5%90%8D%E4%BA%BA/%E8%8B%8F%E8%BD%BC.png"
     },
     {
       "word": "李白",
@@ -2450,24 +2333,6 @@
       "image": "/images/%E5%90%8D%E4%BA%BA/%E6%AF%95%E5%8A%A0%E7%B4%A2.jpg"
     },
     {
-      "word": "曼德拉",
-      "clues": [
-        "反种族隔离",
-        "监狱27年",
-        "和平领袖"
-      ],
-      "image": "/images/%E5%90%8D%E4%BA%BA/%E6%9B%BC%E5%BE%B7%E6%8B%89.jpg"
-    },
-    {
-      "word": "马丁路德金",
-      "clues": [
-        "民权运动",
-        "我有一个梦想",
-        "非暴力抗争"
-      ],
-      "image": "/images/%E5%90%8D%E4%BA%BA/%E9%A9%AC%E4%B8%81%E8%B7%AF%E5%BE%B7%E9%87%91.jpg"
-    },
-    {
       "word": "莫扎特",
       "clues": [
         "音乐神童",
@@ -2513,24 +2378,6 @@
       "image": "/images/%E5%90%8D%E4%BA%BA/%E5%85%B3%E7%BE%BD.jpg"
     },
     {
-      "word": "张骞",
-      "clues": [
-        "丝绸之路",
-        "西域探险",
-        "外交家"
-      ],
-      "image": "/images/%E5%90%8D%E4%BA%BA/%E5%BC%A0%E9%AA%9E.jpg"
-    },
-    {
-      "word": "郑和",
-      "clues": [
-        "下西洋",
-        "宝船队",
-        "航海家"
-      ],
-      "image": "/images/%E5%90%8D%E4%BA%BA/%E9%83%91%E5%92%8C.png"
-    },
-    {
       "word": "华佗",
       "clues": [
         "外科鼻祖",
@@ -2558,15 +2405,6 @@
       "image": "/images/%E5%90%8D%E4%BA%BA/%E6%AF%9B%E6%B3%BD%E4%B8%9C.jpg"
     },
     {
-      "word": "周恩来",
-      "clues": [
-        "外交家",
-        "鞠躬尽瘁",
-        "万隆会议"
-      ],
-      "image": "/images/%E5%90%8D%E4%BA%BA/%E5%91%A8%E6%81%A9%E6%9D%A5.png"
-    },
-    {
       "word": "钱学森",
       "clues": [
         "中国航天之父",
@@ -2576,15 +2414,6 @@
       "image": "/images/%E5%90%8D%E4%BA%BA/%E9%92%B1%E5%AD%A6%E6%A3%AE.jpg"
     },
     {
-      "word": "邓稼先",
-      "clues": [
-        "核武器奠基人",
-        "两弹元勋",
-        "隐姓埋名"
-      ],
-      "image": "/images/%E5%90%8D%E4%BA%BA/%E9%82%93%E7%A8%BC%E5%85%88.png"
-    },
-    {
       "word": "袁隆平",
       "clues": [
         "杂交水稻之父",
@@ -2592,15 +2421,6 @@
         "田埂研究"
       ],
       "image": "/images/%E5%90%8D%E4%BA%BA/%E8%A2%81%E9%9A%86%E5%B9%B3.jpg"
-    },
-    {
-      "word": "李嘉诚",
-      "clues": [
-        "亚洲首富",
-        "长江实业",
-        "慈善教育"
-      ],
-      "image": "/images/%E5%90%8D%E4%BA%BA/%E6%9D%8E%E5%98%89%E8%AF%9A.jpg"
     },
     {
       "word": "马云",
@@ -2639,15 +2459,6 @@
       "image": "/images/%E5%90%8D%E4%BA%BA/%E7%A7%91%E6%AF%94.jpg"
     },
     {
-      "word": "泰森",
-      "clues": [
-        "拳击野兽",
-        "咬耳朵",
-        "重量级冠军"
-      ],
-      "image": "/images/%E5%90%8D%E4%BA%BA/%E6%B3%B0%E6%A3%AE.png"
-    },
-    {
       "word": "李小龙",
       "clues": [
         "功夫巨星",
@@ -2666,15 +2477,6 @@
       "image": "/images/%E5%90%8D%E4%BA%BA/%E6%86%A8%E8%B1%86%E5%85%88%E7%94%9F.jpg"
     },
     {
-      "word": "罗琳",
-      "clues": [
-        "魔法世界",
-        "哈利波特",
-        "女作家"
-      ],
-      "image": "/images/%E5%90%8D%E4%BA%BA/%E7%BD%97%E7%90%B3.jpg"
-    },
-    {
       "word": "金庸",
       "clues": [
         "武侠大师",
@@ -2691,24 +2493,6 @@
         "诺贝尔奖"
       ],
       "image": "/images/%E5%90%8D%E4%BA%BA/%E6%B5%B7%E6%98%8E%E5%A8%81.jpg"
-    },
-    {
-      "word": "王菲",
-      "clues": [
-        "歌坛天后",
-        "空灵嗓音",
-        "春晚常客"
-      ],
-      "image": "/images/%E5%90%8D%E4%BA%BA/%E7%8E%8B%E8%8F%B2.png"
-    },
-    {
-      "word": "周杰伦",
-      "clues": [
-        "音乐才子",
-        "双节棍",
-        "中国风歌曲"
-      ],
-      "image": "/images/%E5%90%8D%E4%BA%BA/%E5%91%A8%E6%9D%B0%E4%BC%A6.png"
     }
   ],
   "杀戮尖塔": [

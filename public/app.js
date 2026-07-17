@@ -1116,6 +1116,9 @@ function renderShare() {
 }
 
 async function shareCurrentGame() {
+  showToast("该功能尚未实现，请等待后续更新", true);
+  return;
+
   if (!state.game?.shareId) return;
   const url = new URL(window.location.href);
   url.searchParams.set("share", state.game.shareId);
