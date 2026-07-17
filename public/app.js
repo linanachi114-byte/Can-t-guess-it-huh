@@ -1880,6 +1880,8 @@ function openCategoryEditModal(category) {
   els.categoryEditForm.reset();
   updateFileName(els.editCategoryCoverInput, els.editCategoryCoverName);
   els.editCategoryNameInput.value = category;
+  els.deleteCategoryBtn.hidden = true;
+  els.deleteCategoryBtn.disabled = true;
   els.categoryEditModal.classList.remove("hidden");
   els.editCategoryNameInput.focus();
   els.editCategoryNameInput.select();

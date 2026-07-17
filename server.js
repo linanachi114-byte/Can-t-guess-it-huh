@@ -698,6 +698,9 @@ async function handleApi(req, res) {
   }
 
   if (req.method === "DELETE" && url.pathname === "/api/wordbank/category") {
+    sendJson(res, 403, { error: "当前暂不允许删除词库。" });
+    return;
+
     const body = await parseBody(req);
     const category = requireCategoryName(body.category);
     const bank = await readWordBank();
