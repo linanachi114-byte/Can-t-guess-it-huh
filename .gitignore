@@ -2,5 +2,9 @@
 data/game-history.json
 node_modules/
 tools/
+.local-postgres/
+.local-postgres.log
+.local-postgres.err.log
 .DS_Store
 logo生成的小趣事.pptx
+*.log

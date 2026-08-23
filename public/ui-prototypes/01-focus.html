@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>猜不到吧 UI 原型 01 - 聚焦问答</title>
+    <link rel="stylesheet" href="./prototype.css" />
+    <style>
+      .focus-layout {
+        display: grid;
+        gap: 18px;
+      }
+
+      .prompt-card {
+        display: grid;
+        gap: 14px;
+        padding: 22px;
+        border: 1px solid #d5e4e0;
+        border-radius: 8px;
+        background: #fbfdfc;
+      }
+
+      .prompt-card h2 {
+        font-size: 26px;
+      }
+
+      .question-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 132px;
+        gap: 10px;
+      }
+
+      .support-strip {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .mini-panel {
+        display: grid;
+        gap: 8px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper);
+      }
+
+      .mini-panel strong {
+        font-size: 18px;
+      }
+
+      @media (max-width: 760px) {
+        .question-row,
+        .support-strip {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="brand">
+        <img src="../nanachi-project-logo.png" alt="" />
+        <div>
+          <p class="eyebrow">AI 猜词游戏</p>
+          <h1>猜不到吧</h1>
+        </div>
+      </header>
+      <nav class="prototype-tabs">
+        <a class="active" href="./01-focus.html">01 聚焦问答</a>
+        <a href="./02-sidebar.html">02 侧边栏</a>
+        <a href="./03-bottom-actions.html">03 底部动作</a>
+        <a href="./04-drawer.html">04 工具抽屉</a>
+        <a href="./05-timeline.html">05 时间线</a>
+      </nav>
+      <p class="layout-note">方案重点：把主界面变成一个明确的“问问题”工作台，只保留一个主按钮；猜答案、公布答案和线索放到次级区域。</p>
+      <section class="board focus-layout">
+        <div class="topbar">
+          <button class="icon-btn" aria-label="返回">←</button>
+          <div class="stats">
+            <div class="stat"><span>当前词库</span><strong>自然与生物</strong></div>
+            <div class="stat"><span>提问次数</span><strong>0</strong></div>
+            <div class="stat"><span>猜测次数</span><strong>0</strong></div>
+          </div>
+          <button class="icon-btn" aria-label="换词">↻</button>
+        </div>
+
+        <section class="prompt-card">
+          <div>
+            <span class="compact-label">当前要做的事</span>
+            <h2>向 AI 提一个能缩小范围的问题</h2>
+          </div>
+          <div class="question-row">
+            <div class="question-input" style="margin:0;grid-template-columns:minmax(0,1fr) 48px 48px">
+              <input value="它和植物有关吗？" />
+              <button class="secondary round-icon">↻</button>
+              <button class="secondary round-icon">↳</button>
+            </div>
+            <button class="primary">提问</button>
+          </div>
+        </section>
+
+        <div class="support-strip">
+          <button class="warning">没有思路？点此揭示线索</button>
+          <button class="danger">我已经知道答案 / 公布答案</button>
+        </div>
+
+        <section class="history">
+          <h2>历史记录</h2>
+          <article class="history-card">
+            <small>#1 提问</small>
+            <strong>它是活物吗？</strong>
+            <span class="answer-pill">AI：是</span>
+          </article>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

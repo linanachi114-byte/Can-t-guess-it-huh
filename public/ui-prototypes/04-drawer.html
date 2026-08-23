@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>猜不到吧 UI 原型 04 - 工具抽屉</title>
+    <link rel="stylesheet" href="./prototype.css" />
+    <style>
+      .drawer-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 76px;
+        gap: 14px;
+      }
+
+      .main-stack {
+        display: grid;
+        gap: 16px;
+      }
+
+      .tool-rail {
+        display: grid;
+        gap: 10px;
+        align-content: start;
+      }
+
+      .tool-rail button {
+        min-height: 68px;
+        border-radius: 8px;
+        font-size: 26px;
+      }
+
+      .open-drawer {
+        display: grid;
+        gap: 12px;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      .drawer-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .drawer-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+
+      .drawer-grid button {
+        min-height: 96px;
+        font-size: 16px;
+      }
+
+      @media (max-width: 760px) {
+        .drawer-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .tool-rail {
+          grid-template-columns: repeat(4, 1fr);
+        }
+
+        .tool-rail button {
+          min-height: 54px;
+        }
+
+        .drawer-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="brand">
+        <img src="../nanachi-project-logo.png" alt="" />
+        <div><p class="eyebrow">AI 猜词游戏</p><h1>猜不到吧</h1></div>
+      </header>
+      <nav class="prototype-tabs">
+        <a href="./01-focus.html">01 聚焦问答</a>
+        <a href="./02-sidebar.html">02 侧边栏</a>
+        <a href="./03-bottom-actions.html">03 底部动作</a>
+        <a class="active" href="./04-drawer.html">04 工具抽屉</a>
+        <a href="./05-timeline.html">05 时间线</a>
+      </nav>
+      <p class="layout-note">方案重点：默认只露出图标工具栏；点击线索/猜答案等图标后展开抽屉。适合保留功能数量，但降低第一眼压力。</p>
+      <section class="board drawer-layout">
+        <div class="main-stack">
+          <div class="topbar">
+            <button class="icon-btn">←</button>
+            <div class="stats">
+              <div class="stat"><span>当前词库</span><strong>自然与生物</strong></div>
+              <div class="stat"><span>提问</span><strong>0</strong></div>
+              <div class="stat"><span>猜测</span><strong>0</strong></div>
+            </div>
+            <button class="icon-btn">↻</button>
+          </div>
+          <div class="question-input">
+            <input placeholder="它和植物有关吗？" />
+            <button class="secondary round-icon">↻</button>
+            <button class="secondary round-icon">↳</button>
+          </div>
+          <button class="primary">提问</button>
+          <section class="open-drawer">
+            <div class="drawer-header">
+              <div><span class="compact-label">已打开</span><h2>辅助工具</h2></div>
+              <button class="ghost round-icon">×</button>
+            </div>
+            <div class="drawer-grid">
+              <button class="warning">查看线索</button>
+              <button class="danger">提交最终答案</button>
+              <button class="ghost">公布答案</button>
+            </div>
+          </section>
+        </div>
+        <aside class="tool-rail">
+          <button class="warning" title="线索">?</button>
+          <button class="danger" title="猜答案">!</button>
+          <button class="ghost" title="公布答案">×</button>
+          <button class="secondary" title="历史">≡</button>
+        </aside>
+      </section>
+    </main>
+  </body>
+</html>

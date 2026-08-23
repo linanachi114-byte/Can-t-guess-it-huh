@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>猜不到吧 UI 原型 03 - 底部动作栏</title>
+    <link rel="stylesheet" href="./prototype.css" />
+    <style>
+      .phone-frame {
+        width: min(430px, 100%);
+        margin: 0 auto;
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        background: #f8fafb;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .phone-content {
+        display: grid;
+        gap: 14px;
+        padding: 16px;
+      }
+
+      .mini-topbar {
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr) 44px;
+        gap: 8px;
+      }
+
+      .mini-topbar .icon-btn {
+        min-height: 44px;
+        font-size: 22px;
+      }
+
+      .stats-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+
+      .stat-tile {
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+      }
+
+      .stat-tile span {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 900;
+      }
+
+      .stat-tile strong {
+        font-size: 17px;
+      }
+
+      .bottom-sheet {
+        position: sticky;
+        bottom: 0;
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+        border-top: 1px solid var(--line);
+        background: #fffaf2;
+      }
+
+      .bottom-sheet button {
+        min-height: 48px;
+        font-size: 16px;
+      }
+
+      .question-input {
+        grid-template-columns: minmax(0, 1fr);
+        margin-top: 0;
+      }
+
+      .question-input input {
+        font-size: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="brand">
+        <img src="../nanachi-project-logo.png" alt="" />
+        <div><p class="eyebrow">AI 猜词游戏</p><h1>猜不到吧</h1></div>
+      </header>
+      <nav class="prototype-tabs">
+        <a href="./01-focus.html">01 聚焦问答</a>
+        <a href="./02-sidebar.html">02 侧边栏</a>
+        <a class="active" href="./03-bottom-actions.html">03 底部动作</a>
+        <a href="./04-drawer.html">04 工具抽屉</a>
+        <a href="./05-timeline.html">05 时间线</a>
+      </nav>
+      <p class="layout-note">方案重点：手机端优先。主要输入区域在上，所有动作固定在底部；用户不用在页面中间找按钮。</p>
+      <section class="phone-frame">
+        <div class="phone-content">
+          <div class="mini-topbar">
+            <button class="icon-btn">←</button>
+            <div class="stats-row">
+              <div class="stat-tile"><span>词库</span><strong>自然</strong></div>
+              <div class="stat-tile"><span>提问</span><strong>0</strong></div>
+              <div class="stat-tile"><span>猜测</span><strong>0</strong></div>
+            </div>
+            <button class="icon-btn">↻</button>
+          </div>
+          <section class="hint-board">
+            <h3><span>线索板</span><small>尚未揭示</small></h3>
+            <button class="warning">没有思路？点此揭示线索</button>
+          </section>
+          <div class="question-input"><input placeholder="它和植物有关吗？" /></div>
+          <section class="history">
+            <h2>历史记录</h2>
+            <article class="history-card"><small>#1</small><strong>它是活物吗？</strong><span class="answer-pill">是</span></article>
+          </section>
+        </div>
+        <footer class="bottom-sheet">
+          <button class="primary">提问</button>
+          <div class="two-actions">
+            <button class="danger">猜答案</button>
+            <button class="ghost">公布答案</button>
+          </div>
+        </footer>
+      </section>
+    </main>
+  </body>
+</html>

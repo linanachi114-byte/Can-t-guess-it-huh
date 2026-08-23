@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import pg from "pg";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,6 +12,8 @@ const __dirname = path.dirname(__filename);
 loadEnv(path.join(__dirname, ".env"));
 
 const PORT = Number(process.env.PORT || 5177);
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || "http://127.0.0.1:5180";
+const DATABASE_URL = process.env.DATABASE_URL || "postgres://postgres@127.0.0.1:54329/yichui";
 const API_KEY = process.env.DEEPSEEK_API_KEY || "";
 const MODEL = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
 const FALLBACK_MODEL = process.env.DEEPSEEK_FALLBACK_MODEL || MODEL;
@@ -25,6 +28,8 @@ const CATEGORY_COVER_INDEX_PATH = path.join(CATEGORY_COVER_DIR, "index.json");
 const PLACEHOLDER_IMAGE = "/images/placeholder.svg";
 const MAX_CLUES = 5;
 const games = new Map();
+const { Pool } = pg;
+const pool = new Pool({ connectionString: DATABASE_URL });
 
 function loadEnv(envPath) {
   if (!existsSync(envPath)) return;
@@ -48,31 +53,249 @@ async function writeJson(filePath, value) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
+async function initDatabase() {
+  await pool.query(`
+    create table if not exists guess_categories (
+      name text primary key,
+      cover_image text not null default '',
+      sort_order integer not null default 0,
+      updated_at timestamptz not null default now()
+    );
+
+    create table if not exists guess_entries (
+      id text primary key,
+      category text not null references guess_categories(name) on delete cascade on update cascade,
+      word text not null,
+      clues jsonb not null,
+      image text not null default '',
+      sort_order integer not null default 0,
+      updated_at timestamptz not null default now(),
+      unique (category, word)
+    );
+
+    create table if not exists guess_game_history (
+      id text primary key,
+      user_id text references users(id) on delete set null,
+      game_id text not null,
+      mode text not null default 'normal',
+      daily_date date,
+      category text not null,
+      word text not null,
+      image text not null default '',
+      started_at timestamptz,
+      ended_at timestamptz,
+      outcome text not null,
+      question_count integer not null default 0,
+      guess_count integer not null default 0,
+      history jsonb not null,
+      created_at timestamptz not null default now()
+    );
+
+    alter table guess_game_history add column if not exists user_id text references users(id) on delete set null;
+    alter table guess_game_history add column if not exists mode text not null default 'normal';
+    alter table guess_game_history add column if not exists daily_date date;
+
+    create table if not exists guess_daily_challenges (
+      day date primary key,
+      entry_id text not null references guess_entries(id) on delete cascade,
+      created_at timestamptz not null default now()
+    );
+  `);
+
+  const existing = await pool.query("select 1 from guess_categories limit 1");
+  if (!existing.rowCount && existsSync(WORD_BANK_PATH)) {
+    await writeWordBankToDb(normalizeWordBank(await readJson(WORD_BANK_PATH)));
+  }
+
+  const existingHistory = await pool.query("select 1 from guess_game_history limit 1");
+  if (!existingHistory.rowCount && existsSync(GAME_HISTORY_PATH)) {
+    await writeGameHistoryToDb(await readJson(GAME_HISTORY_PATH));
+  }
+
+  if (existsSync(CATEGORY_COVER_INDEX_PATH)) {
+    await writeCategoryCoversToDb(await readJson(CATEGORY_COVER_INDEX_PATH));
+  }
+}
+
+async function readWordBankFromDb() {
+  const result = await pool.query(
+    `select category, word, clues, image
+     from guess_entries
+     order by category asc, sort_order asc, word asc`,
+  );
+  const bank = {};
+  for (const row of result.rows) {
+    bank[row.category] ||= [];
+    bank[row.category].push({
+      word: row.word,
+      clues: Array.isArray(row.clues) ? row.clues : [],
+      image: row.image || "",
+    });
+  }
+  const categories = await pool.query("select name from guess_categories order by sort_order asc, name asc");
+  for (const row of categories.rows) bank[row.name] ||= [];
+  return normalizeWordBank(bank);
+}
+
+async function writeWordBankToDb(bank) {
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    await client.query("delete from guess_entries");
+    await client.query("delete from guess_categories");
+    for (const [categoryIndex, [category, entries]] of Object.entries(normalizeWordBank(bank)).entries()) {
+      await client.query(
+        `insert into guess_categories (name, sort_order)
+         values ($1, $2)
+         on conflict (name) do update set sort_order = excluded.sort_order, updated_at = now()`,
+        [category, categoryIndex + 1],
+      );
+      for (const [entryIndex, entry] of entries.entries()) {
+        await client.query(
+          `insert into guess_entries (id, category, word, clues, image, sort_order)
+           values ($1, $2, $3, $4, $5, $6)
+           on conflict (category, word) do update set
+             clues = excluded.clues,
+             image = excluded.image,
+             sort_order = excluded.sort_order,
+             updated_at = now()`,
+          [
+            crypto.createHash("sha1").update(`${category}:${entry.word}`).digest("hex"),
+            category,
+            entry.word,
+            JSON.stringify(entry.clues),
+            entry.image || "",
+            entryIndex + 1,
+          ],
+        );
+      }
+    }
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function readGameHistoryFromDb(userId = null, mode = "") {
+  const conditions = [];
+  const values = [];
+  if (userId) {
+    values.push(userId);
+    conditions.push(`user_id = $${values.length}`);
+  }
+  if (mode === "daily" || mode === "normal") {
+    values.push(mode);
+    conditions.push(`mode = $${values.length}`);
+  }
+  const where = conditions.length ? `where ${conditions.join(" and ")}` : "";
+  const result = await pool.query(
+    `select id, game_id, mode, daily_date, category, word, image, started_at, ended_at, outcome, question_count, guess_count, history
+     from guess_game_history
+     ${where}
+     order by ended_at desc nulls last, created_at desc
+     limit 200`,
+    values,
+  );
+  return result.rows.map((row) => ({
+    id: row.id,
+    gameId: row.game_id,
+    mode: row.mode || "normal",
+    dailyDate: row.daily_date ? formatDbDate(row.daily_date) : "",
+    category: row.category,
+    word: row.word,
+    image: row.image,
+    startedAt: row.started_at ? row.started_at.toISOString() : "",
+    endedAt: row.ended_at ? row.ended_at.toISOString() : "",
+    outcome: row.outcome,
+    questionCount: row.question_count,
+    guessCount: row.guess_count,
+    history: Array.isArray(row.history) ? row.history : [],
+  }));
+}
+
+async function writeGameHistoryToDb(history) {
+  for (const record of Array.isArray(history) ? history : []) {
+    await pool.query(
+      `insert into guess_game_history
+        (id, user_id, game_id, mode, daily_date, category, word, image, started_at, ended_at, outcome, question_count, guess_count, history)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       on conflict (id) do update set
+        user_id = excluded.user_id,
+        game_id = excluded.game_id,
+        mode = excluded.mode,
+        daily_date = excluded.daily_date,
+        category = excluded.category,
+        word = excluded.word,
+        image = excluded.image,
+        started_at = excluded.started_at,
+        ended_at = excluded.ended_at,
+        outcome = excluded.outcome,
+        question_count = excluded.question_count,
+        guess_count = excluded.guess_count,
+        history = excluded.history`,
+      [
+        record.id,
+        record.userId || null,
+        record.gameId || "",
+        record.mode || "normal",
+        record.dailyDate || null,
+        record.category || "",
+        record.word || "",
+        record.image || PLACEHOLDER_IMAGE,
+        record.startedAt || null,
+        record.endedAt || null,
+        record.outcome || "playing",
+        Number(record.questionCount || 0),
+        Number(record.guessCount || 0),
+        JSON.stringify(Array.isArray(record.history) ? record.history : []),
+      ],
+    );
+  }
+}
+
+async function readCategoryCoversFromDb() {
+  const result = await pool.query("select name, cover_image from guess_categories where cover_image <> ''");
+  return Object.fromEntries(result.rows.map((row) => [row.name, row.cover_image]));
+}
+
+async function writeCategoryCoversToDb(covers) {
+  for (const [category, coverImage] of Object.entries(covers || {})) {
+    await pool.query(
+      `insert into guess_categories (name, cover_image)
+       values ($1, $2)
+       on conflict (name) do update set cover_image = excluded.cover_image, updated_at = now()`,
+      [category, String(coverImage || "")],
+    );
+  }
+}
+
 async function readWordBank() {
-  return normalizeWordBank(await readJson(WORD_BANK_PATH));
+  return readWordBankFromDb();
 }
 
 async function writeWordBank(bank) {
-  await writeJson(WORD_BANK_PATH, normalizeWordBank(bank));
+  await writeWordBankToDb(bank);
 }
 
-async function readGameHistory() {
-  if (!existsSync(GAME_HISTORY_PATH)) return [];
-  return JSON.parse(await readFile(GAME_HISTORY_PATH, "utf8"));
+async function readGameHistory(userId = null, mode = "") {
+  return readGameHistoryFromDb(userId, mode);
 }
 
 async function writeGameHistory(history) {
-  await writeJson(GAME_HISTORY_PATH, history);
+  await writeGameHistoryToDb(history);
 }
 
 async function readCategoryCovers() {
-  if (!existsSync(CATEGORY_COVER_INDEX_PATH)) return {};
-  return JSON.parse(await readFile(CATEGORY_COVER_INDEX_PATH, "utf8"));
+  return readCategoryCoversFromDb();
 }
 
 async function writeCategoryCovers(covers) {
   await mkdir(CATEGORY_COVER_DIR, { recursive: true });
   await writeJson(CATEGORY_COVER_INDEX_PATH, covers || {});
+  await writeCategoryCoversToDb(covers);
 }
 
 function normalizeWordBank(rawBank) {
@@ -265,6 +488,62 @@ function sendText(res, status, text, contentType = "text/plain; charset=utf-8") 
   res.end(text);
 }
 
+function formatDbDate(value) {
+  if (typeof value === "string") return value.slice(0, 10);
+  if (value instanceof Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+  return chinaDateKey();
+}
+
+async function readRequestBuffer(req) {
+  const chunks = [];
+  let total = 0;
+  for await (const chunk of req) {
+    chunks.push(chunk);
+    total += chunk.length;
+    if (total > 1024 * 1024) throw new Error("request body too large");
+  }
+  return chunks.length ? Buffer.concat(chunks) : undefined;
+}
+
+async function proxyAuth(req, res) {
+  const response = await fetch(`${AUTH_SERVICE_URL}${req.url}`, {
+    method: req.method,
+    headers: {
+      "Content-Type": req.headers["content-type"] || "application/json",
+      ...(req.headers.authorization ? { Authorization: req.headers.authorization } : {}),
+      ...(req.headers.cookie ? { Cookie: req.headers.cookie } : {})
+    },
+    body: req.method === "GET" ? undefined : await readRequestBuffer(req),
+    redirect: "manual"
+  });
+  const text = await response.text();
+  const headers = {
+    "Content-Type": response.headers.get("content-type") || "application/json; charset=utf-8",
+    "Cache-Control": "no-store"
+  };
+  const setCookie = response.headers.get("set-cookie");
+  if (setCookie) headers["Set-Cookie"] = setCookie;
+  res.writeHead(response.status, headers);
+  res.end(text);
+}
+
+async function currentUser(req) {
+  const response = await fetch(`${AUTH_SERVICE_URL}/api/auth/me`, {
+    headers: {
+      ...(req.headers.authorization ? { Authorization: req.headers.authorization } : {}),
+      ...(req.headers.cookie ? { Cookie: req.headers.cookie } : {})
+    }
+  }).catch(() => null);
+  if (!response?.ok) return null;
+  const payload = await response.json().catch(() => null);
+  return payload?.user || null;
+}
+
 async function parseBody(req) {
   let body = "";
   for await (const chunk of req) {
@@ -333,6 +612,8 @@ function publicGame(game) {
   return {
     id: game.id,
     shareId: game.shareId || null,
+    mode: game.mode || "normal",
+    dailyDate: game.dailyDate || "",
     category: game.category,
     startedAt: game.startedAt,
     isWon: game.isWon,
@@ -359,7 +640,10 @@ async function archiveGame(game) {
   const shareId = crypto.randomUUID();
   const record = {
     id: shareId,
+    userId: game.userId || null,
     gameId: game.id,
+    mode: game.mode || "normal",
+    dailyDate: game.dailyDate || null,
     category: game.category,
     word: game.word,
     image: game.image || PLACEHOLDER_IMAGE,
@@ -371,9 +655,7 @@ async function archiveGame(game) {
     history: game.history
   };
 
-  const history = await readGameHistory();
-  history.unshift(record);
-  await writeGameHistory(history.slice(0, 200));
+  await writeGameHistory([record]);
   game.shareId = shareId;
   return shareId;
 }
@@ -382,7 +664,27 @@ function pickRandom(items) {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-async function startGame(categories) {
+function createGameFromEntry(category, entry, options = {}) {
+  const game = {
+    id: crypto.randomUUID(),
+    word: entry.word,
+    clues: entry.clues,
+    image: entry.image,
+    clueIndex: 0,
+    category,
+    startedAt: new Date().toISOString(),
+    isWon: false,
+    isRevealed: false,
+    mode: options.mode || "normal",
+    dailyDate: options.dailyDate || "",
+    userId: options.userId || null,
+    history: []
+  };
+  games.set(game.id, game);
+  return publicGame(game);
+}
+
+async function startGame(categories, options = {}) {
   const bank = await readWordBank();
   const allCategories = Object.keys(bank).filter((name) => bank[name].length);
   const selectedCategories = Array.isArray(categories)
@@ -394,20 +696,52 @@ async function startGame(categories) {
 
   const category = pickRandom(selectedCategories);
   const entry = pickRandom(bank[category]);
-  const game = {
-    id: crypto.randomUUID(),
-    word: entry.word,
-    clues: entry.clues,
-    image: entry.image,
-    clueIndex: 0,
-    category,
-    startedAt: new Date().toISOString(),
-    isWon: false,
-    isRevealed: false,
-    history: []
+  return createGameFromEntry(category, entry, options);
+}
+
+function chinaDateKey(now = new Date()) {
+  return new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+async function dailyChallengeFor(day = chinaDateKey()) {
+  let result = await pool.query(
+    `select d.day, e.id as entry_id, e.category, e.word, e.clues, e.image
+     from guess_daily_challenges d
+     join guess_entries e on e.id = d.entry_id
+     where d.day = $1`,
+    [day],
+  );
+
+  if (!result.rowCount) {
+    const picked = await pool.query(
+      `select id from guess_entries order by md5(id || $1) limit 1`,
+      [day],
+    );
+    if (!picked.rowCount) throw new Error("词库暂无可用词条。");
+    await pool.query(
+      `insert into guess_daily_challenges (day, entry_id)
+       values ($1, $2) on conflict (day) do nothing`,
+      [day, picked.rows[0].id],
+    );
+    result = await pool.query(
+      `select d.day, e.id as entry_id, e.category, e.word, e.clues, e.image
+       from guess_daily_challenges d
+       join guess_entries e on e.id = d.entry_id
+       where d.day = $1`,
+      [day],
+    );
+  }
+
+  const row = result.rows[0];
+  return {
+    day,
+    category: row.category,
+    entry: {
+      word: row.word,
+      clues: Array.isArray(row.clues) ? row.clues : [],
+      image: row.image || ""
+    }
   };
-  games.set(game.id, game);
-  return publicGame(game);
 }
 
 async function askDeepSeek(messages, maxTokens = 80, options = {}) {
@@ -447,14 +781,22 @@ async function askDeepSeek(messages, maxTokens = 80, options = {}) {
   return content;
 }
 
-function strictYesNoMaybe(text) {
+function strictQuestionAnswer(text) {
   const normalized = normalizeAnswer(text);
+  if (
+    normalized.includes("无法回答") ||
+    normalized.includes("不能回答") ||
+    normalized.includes("换一种问法") ||
+    normalized.includes("换个问法") ||
+    normalized.includes("无法理解") ||
+    normalized.includes("没理解")
+  ) return "无法回答";
   if (normalized.includes("是也不是")) return "是也不是";
   if (normalized === "是") return "是";
   if (normalized === "否" || normalized === "不是") return "否";
   if (normalized.startsWith("是")) return "是";
   if (normalized.startsWith("否") || normalized.startsWith("不是")) return "否";
-  return "是也不是";
+  return "无法回答";
 }
 
 function buildQuestionMessages(game, question) {
@@ -471,11 +813,11 @@ function buildQuestionMessages(game, question) {
     {
       role: "system",
       content:
-        "你正在主持一个中文猜词游戏。你知道隐藏答案，但绝不能透露答案，也不能解释。玩家会问关于隐藏答案的是非问题。你只能从这三个中文选项中选择一个并原样输出：是、否、是也不是。若问题无法用稳定的是/否判断，或答案取决于语境、类别、版本、时期、定义差异，就回答：是也不是。"
+        "你正在主持一个中文猜词游戏。你知道隐藏答案，但绝不能透露答案，也不能解释。玩家应该问关于隐藏答案的是非问题。你只能从这四个中文选项中选择一个并原样输出：是、否、是也不是、无法回答。如果玩家的问题不是封闭式是非问题，或需要你列举、解释、比较、给提示、猜测玩家意图，或问题本身语义不清，就回答：无法回答。若问题是是非问题但无法用稳定的是/否判断，或答案取决于语境、类别、版本、时期、定义差异，就回答：是也不是。"
     },
     {
       role: "user",
-      content: `隐藏答案：${game.word}\n所属词库：${game.category}\n已公布线索：${revealedClues(game).join("；") || "暂无"}\n最近历史：\n${compactHistory || "暂无"}\n\n玩家问题：${question}\n请只输出：是、否、是也不是。`
+      content: `隐藏答案：${game.word}\n所属词库：${game.category}\n已公布线索：${revealedClues(game).join("；") || "暂无"}\n最近历史：\n${compactHistory || "暂无"}\n\n玩家问题：${question}\n请只输出：是、否、是也不是、无法回答。`
     }
   ];
 }
@@ -483,7 +825,7 @@ function buildQuestionMessages(game, question) {
 async function answerQuestionOnce(game, question) {
   const content = await askDeepSeek(buildQuestionMessages(game, question));
 
-  return strictYesNoMaybe(content);
+  return strictQuestionAnswer(content);
 }
 
 async function fallbackAnswerQuestion(game, question, votes) {
@@ -491,14 +833,14 @@ async function fallbackAnswerQuestion(game, question, votes) {
     {
       role: "system",
       content:
-        "你是中文猜词游戏的最终裁判。你知道隐藏答案，但绝不能透露答案，也不能解释。玩家问的是关于隐藏答案的是非问题。你会看到多个普通模型的回答投票；如果投票不一致，请基于隐藏答案、词库语境、已公布线索和玩家问题做最终裁决。只能输出：是、否、是也不是。"
+        "你是中文猜词游戏的最终裁判。你知道隐藏答案，但绝不能透露答案，也不能解释。玩家应该问关于隐藏答案的是非问题。你会看到多个普通模型的回答投票；如果投票不一致，请基于隐藏答案、词库语境、已公布线索和玩家问题做最终裁决。只能输出：是、否、是也不是、无法回答。如果玩家的问题不是封闭式是非问题，或需要你列举、解释、比较、给提示、猜测玩家意图，或问题本身语义不清，就回答：无法回答。"
     },
     {
       role: "user",
-      content: `隐藏答案：${game.word}\n所属词库：${game.category}\n已公布线索：${revealedClues(game).join("；") || "暂无"}\n玩家问题：${question}\n普通模型投票：${votes.join("、")}\n请只输出：是、否、是也不是。`
+      content: `隐藏答案：${game.word}\n所属词库：${game.category}\n已公布线索：${revealedClues(game).join("；") || "暂无"}\n玩家问题：${question}\n普通模型投票：${votes.join("、")}\n请只输出：是、否、是也不是、无法回答。`
     }
   ], 800, { model: FALLBACK_MODEL, thinking: "enabled" });
-  return strictYesNoMaybe(content);
+  return strictQuestionAnswer(content);
 }
 
 async function answerQuestion(game, question) {
@@ -622,6 +964,11 @@ async function serveStatic(req, res) {
 async function handleApi(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
+  if (url.pathname.startsWith("/api/auth/") || url.pathname.startsWith("/api/play/")) {
+    await proxyAuth(req, res);
+    return;
+  }
+
   if (req.method === "GET" && url.pathname === "/api/health") {
     sendJson(res, 200, { ok: true, model: MODEL, fallbackModel: FALLBACK_MODEL, answerVotes: ANSWER_VOTES, hasKey: Boolean(API_KEY) });
     return;
@@ -633,7 +980,40 @@ async function handleApi(req, res) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/history") {
-    sendJson(res, 200, await readGameHistory());
+    const user = await currentUser(req);
+    sendJson(res, 200, await readGameHistory(user?.id || null, url.searchParams.get("mode") || ""));
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/daily/status") {
+    const user = await currentUser(req);
+    const daily = await dailyChallengeFor();
+    const completed = user
+      ? await pool.query(
+          "select 1 from guess_game_history where user_id = $1 and mode = 'daily' and daily_date = $2 limit 1",
+          [user.id, daily.day],
+        )
+      : { rowCount: 0 };
+    sendJson(res, 200, {
+      day: daily.day,
+      category: daily.category,
+      completed: Boolean(completed.rowCount)
+    });
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/daily/game") {
+    const user = await currentUser(req);
+    if (!user) {
+      sendJson(res, 401, { error: "请先登录后再进入每日一题。" });
+      return;
+    }
+    const daily = await dailyChallengeFor();
+    sendJson(res, 200, createGameFromEntry(daily.category, daily.entry, {
+      mode: "daily",
+      dailyDate: daily.day,
+      userId: user.id
+    }));
     return;
   }
 
@@ -874,7 +1254,8 @@ async function handleApi(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/game") {
     const body = await parseBody(req);
-    sendJson(res, 200, await startGame(body.categories));
+    const user = await currentUser(req);
+    sendJson(res, 200, await startGame(body.categories, { userId: user?.id || null }));
     return;
   }
 
@@ -999,6 +1380,8 @@ const server = createServer(async (req, res) => {
     sendJson(res, 500, { error: error.message || "服务器错误" });
   }
 });
+
+await initDatabase();
 
 server.listen(PORT, () => {
   console.log(`猜词游戏已启动：http://localhost:${PORT}`);

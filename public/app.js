@@ -1,53 +1,273 @@
 const MAX_CLUES = 5;
+const AUTO_QUESTION_LIMIT = 20;
 const MOBILE_QUERY = window.matchMedia("(max-width: 920px)");
-const ASK_PLACEHOLDER_PREFIXES = ["它", "这个答案", "你想的词", "目标对象"];
-const ASK_PLACEHOLDER_TRAITS = [
-  "通常能被人拿在手里",
-  "和日常生活关系很近",
-  "属于人工制造的东西",
-  "主要出现在室内",
-  "经常在户外出现",
-  "通常比一个成年人小",
-  "通常比一个成年人大",
-  "和食物或饮品有关",
-  "和交通出行有关",
-  "和学习工作有关",
-  "和艺术作品有关",
-  "和历史人物有关",
-  "在现代社会仍然常见",
-  "需要用电或能源",
-  "通常有固定的形状",
-  "可以被看见或触摸",
-  "和节日或仪式有关",
-  "常出现在影视或游戏里",
-  "名字里可能有两个以上汉字",
-  "更偏自然界而不是人造物",
-  "常被多人一起使用或欣赏",
-  "和运动或身体活动有关",
-  "常见于城市环境",
-  "常见于家庭环境",
-  "有明显的颜色或外观特征",
-  "会发出声音或与声音有关",
-  "常被用来收藏或展示",
-  "通常不是活物",
-  "可能是一个虚构概念或角色",
-  "和水有关",
-  "和动物有关",
-  "和植物有关",
-  "和天气或自然现象有关",
-  "可以作为礼物",
-  "有明确的功能用途"
+const COMMON_ASK_QUESTIONS = [
+  "它通常能被人直接看见吗？",
+  "它在现代社会仍然常见吗？",
+  "它通常有明确的功能用途吗？",
+  "它和日常生活关系很近吗？",
+  "它通常比成年人小吗？",
+  "它通常比成年人大吗？",
+  "它主要出现在室内吗？",
+  "它经常在户外出现吗？",
+  "它可以被移动或携带吗？",
+  "它有明显的颜色或外观特征吗？",
+  "它通常不是活物吗？",
+  "它可以作为礼物吗？"
 ];
-const ASK_PLACEHOLDERS = ASK_PLACEHOLDER_TRAITS.flatMap((trait) =>
-  ASK_PLACEHOLDER_PREFIXES.map((prefix) => `${prefix}${trait}吗？`)
-);
+const CATEGORY_ASK_QUESTIONS = {
+  "日常物品": [
+    "它通常能被人拿在手里吗？",
+    "它主要在家庭环境中使用吗？",
+    "它需要用电或电池吗？",
+    "它通常用于收纳或携带东西吗？",
+    "它和清洁整理有关吗？",
+    "它和吃饭喝水有关吗？",
+    "它通常放在桌面或柜子上吗？",
+    "它经常被带出门使用吗？",
+    "它主要由金属或塑料制成吗？",
+    "它有开关、按钮或可活动部件吗？",
+    "它通常每天都会被用到吗？",
+    "它的主要用途是保护某样东西吗？",
+    "它通常需要单手操作吗？",
+    "它通常会和衣物或穿戴有关吗？",
+    "它能装进普通背包里吗？",
+    "它通常放在厨房或餐桌附近吗？",
+    "它通常放在卧室或客厅里吗？",
+    "它和照明、温度或环境舒适度有关吗？",
+    "它会接触水或液体吗？",
+    "它通常容易损坏或需要保养吗？",
+    "它的形状通常比较扁平吗？",
+    "它通常有盖子、把手或拉链吗？",
+    "它主要用于记录、阅读或信息展示吗？",
+    "它主要用于安全、防护或锁定吗？",
+    "它经常成对或成套出现吗？",
+    "它通常价格不算昂贵吗？",
+    "它能直接帮助人完成某个动作吗？",
+    "它通常需要插电才能工作吗？",
+    "它主要由纸、布或皮革制成吗？",
+    "它通常有透明或反光部分吗？",
+    "它更偏工具而不是装饰品吗？",
+    "儿童也经常会使用它吗？"
+  ],
+  "自然与生物": [
+    "它是活物或曾经是活物吗？",
+    "它属于动物吗？",
+    "它属于植物吗？",
+    "它主要生活或出现在水中吗？",
+    "它主要出现在陆地上吗？",
+    "它通常比成年人更大吗？",
+    "它能自己移动吗？",
+    "它和天气或天体现象有关吗？",
+    "它在自然界中很常见吗？",
+    "它通常需要阳光或水分吗？",
+    "它对人类有食用或药用价值吗？",
+    "它有明显的季节性吗？",
+    "它有根、茎、叶或类似结构吗？",
+    "它有翅膀、鳍或足吗？",
+    "它通常生活在群体中吗？",
+    "它主要出现在寒冷环境中吗？",
+    "它主要出现在炎热或热带环境中吗？",
+    "它和森林、草原或山地有关吗？",
+    "它和海洋、河流或湖泊有关吗？",
+    "它能被肉眼清楚看见吗？",
+    "它的颜色通常比较鲜明吗？",
+    "它会开花、结果或繁殖后代吗？",
+    "它对生态环境有重要作用吗？",
+    "它可能对人类有危险吗？",
+    "它通常会发出声音吗？",
+    "它在夜间更容易被观察到吗？",
+    "它的形态会随生命周期变化吗？",
+    "它和岩石、土壤或地貌有关吗？",
+    "它可以被人工饲养或种植吗？",
+    "它常出现在神话、象征或文化意象中吗？",
+    "它的体型通常很小吗？",
+    "它通常依赖其他生物生存吗？"
+  ],
+  "食物饮品": [
+    "它通常是热食或热饮吗？",
+    "它通常是甜的味道吗？",
+    "它通常是咸的味道吗？",
+    "它主要由谷物或面粉制成吗？",
+    "它主要包含肉类或海鲜吗？",
+    "它通常需要烹饪后食用吗？",
+    "它经常作为早餐出现吗？",
+    "它常见于聚餐或节日场景吗？",
+    "它通常可以直接用手拿着吃吗？",
+    "它属于饮品吗？",
+    "它常见于中国饮食文化吗？",
+    "它通常有明显的香味或调味吗？",
+    "它通常是冷食或冷饮吗？",
+    "它主要由蔬菜或水果制成吗？",
+    "它包含乳制品或蛋类吗？",
+    "它通常需要餐具食用吗？",
+    "它常见于街边小吃或快餐吗？",
+    "它通常作为主食吗？",
+    "它通常作为零食或甜点吗？",
+    "它的口感偏脆吗？",
+    "它的口感偏软或黏吗？",
+    "它通常带有辣味吗？",
+    "它通常需要发酵、腌制或长时间加工吗？",
+    "它常见于西式饮食吗？",
+    "它通常有汤汁或液体部分吗？",
+    "它能长期保存吗？",
+    "它通常适合多人分享吗？",
+    "它的外形通常是圆形或片状吗？",
+    "它和某个节日或传统习俗有关吗？",
+    "它通常含有咖啡因或酒精吗？",
+    "它更偏健康食品而不是高热量食品吗？",
+    "它通常需要冷藏保存吗？"
+  ],
+  "地点": [
+    "它通常是室内场所吗？",
+    "它通常是公共场所吗？",
+    "它和交通出行有关吗？",
+    "它和学习、阅读或展览有关吗？",
+    "它和消费、购物或娱乐有关吗？",
+    "它需要买票或预约才能进入吗？",
+    "它通常会有大量人流吗？",
+    "它具有历史或文化意义吗？",
+    "它通常位于城市中吗？",
+    "它和自然风景关系更大吗？",
+    "人们去那里通常会停留较长时间吗？",
+    "它有明确的管理人员或服务人员吗？",
+    "它通常有固定开放时间吗？",
+    "它主要用于居住或住宿吗？",
+    "它主要用于工作或办公吗？",
+    "它和医疗、教育或公共服务有关吗？",
+    "它和宗教、纪念或仪式有关吗？",
+    "它通常需要安检或身份验证吗？",
+    "它通常有座位、柜台或售票处吗？",
+    "它适合儿童或家庭活动吗？",
+    "它通常位于室外或露天环境吗？",
+    "它和水域、山地或自然景观有关吗？",
+    "它通常会出现在旅游攻略中吗？",
+    "它的建筑规模通常比较大吗？",
+    "它通常有明显的标志或入口吗？",
+    "它和体育运动或健身有关吗？",
+    "它和餐饮或休闲社交有关吗？",
+    "它通常需要排队吗？",
+    "它主要服务本地居民吗？",
+    "它可能跨越很大的地理范围吗？",
+    "它在夜间也常有人活动吗？",
+    "它通常有较强的安全或秩序管理吗？"
+  ],
+  "职业身份": [
+    "这个职业通常需要专业资格或证书吗？",
+    "这个职业主要在室内工作吗？",
+    "这个职业经常需要与人沟通吗？",
+    "这个职业和医疗健康有关吗？",
+    "这个职业和教育或研究有关吗？",
+    "这个职业和科技或工程有关吗？",
+    "这个职业和艺术创作有关吗？",
+    "这个职业有较明显的制服或装备吗？",
+    "这个职业经常需要体力劳动吗？",
+    "这个职业承担公共安全或公共服务职责吗？",
+    "这个职业的工作成果通常很容易被公众看到吗？",
+    "这个职业通常需要长期训练吗？",
+    "这个职业主要服务个人客户吗？",
+    "这个职业主要在团队中完成工作吗？",
+    "这个职业需要经常出差或移动吗？",
+    "这个职业需要使用电脑或专业软件吗？",
+    "这个职业需要操作机器、器械或工具吗？",
+    "这个职业和食物制作或餐饮服务有关吗？",
+    "这个职业和法律、金融或管理有关吗？",
+    "这个职业和媒体传播或写作有关吗？",
+    "这个职业和交通运输有关吗？",
+    "这个职业通常有较高风险吗？",
+    "这个职业经常面对公众或观众吗？",
+    "这个职业的工作时间通常不固定吗？",
+    "这个职业需要较强的创造力吗？",
+    "这个职业需要较强的体能吗？",
+    "这个职业需要照顾、指导或帮助他人吗？",
+    "这个职业常见于学校或医院吗？",
+    "这个职业更偏脑力劳动吗？",
+    "这个职业通常有明确的等级或职称吗？",
+    "这个职业的收入通常依赖项目或订单吗？",
+    "这个职业在现代城市中很常见吗？"
+  ],
+  "名人": [
+    "这个人主要因科学或发明闻名吗？",
+    "这个人主要因文学或艺术闻名吗？",
+    "这个人主要因音乐闻名吗？",
+    "这个人主要因政治或军事闻名吗？",
+    "这个人是中国历史或文化人物吗？",
+    "这个人主要活动在近现代吗？",
+    "这个人已经去世了吗？",
+    "这个人的作品或贡献常在学校教材中出现吗？",
+    "这个人获得过重要奖项或荣誉吗？",
+    "这个人的影响跨越多个国家吗？",
+    "这个人和某个著名理论或作品强相关吗？",
+    "这个人更偏思想家而不是表演者吗？",
+    "这个人主要活跃在欧洲吗？",
+    "这个人主要活跃在亚洲吗？",
+    "这个人出生在古代或中世纪吗？",
+    "这个人和战争、国家治理或政治变革有关吗？",
+    "这个人和诗歌、小说或戏剧有关吗？",
+    "这个人和绘画、雕塑或建筑有关吗？",
+    "这个人和物理、化学或数学有关吗？",
+    "这个人和医学、生命科学或工程技术有关吗？",
+    "这个人有广为流传的代表作吗？",
+    "这个人的名字常被翻译成中文音译吗？",
+    "这个人曾经被迫害、流亡或经历重大挫折吗？",
+    "这个人主要以个人创作而不是职位闻名吗？",
+    "这个人和宗教或哲学思想有关吗？",
+    "这个人曾影响某个学派或运动吗？",
+    "这个人的成就和表演或舞台有关吗？",
+    "这个人常出现在纪念馆、雕像或货币图案中吗？",
+    "这个人是否生活在 20 世纪以后？",
+    "这个人和中国语文或历史课本关系很强吗？",
+    "这个人通常被认为改变了某个领域的发展方向吗？",
+    "这个人的姓氏或名字在大众文化中很有辨识度吗？"
+  ],
+  "杀戮尖塔": [
+    "它是一张卡牌吗？",
+    "它是遗物或药水吗？",
+    "它属于诅咒或状态牌吗？",
+    "它主要用于造成伤害吗？",
+    "它主要用于防御或获得格挡吗？",
+    "它会影响能量、抽牌或弃牌吗？",
+    "它和力量、敏捷或集中有关吗？",
+    "它通常有负面效果吗？",
+    "它是某个角色的专属内容吗？",
+    "它在战斗中会被直接打出吗？",
+    "它的费用通常大于 1 点能量吗？",
+    "它更偏进攻而不是防守吗？",
+    "它属于铁甲战士相关内容吗？",
+    "它属于静默猎手相关内容吗？",
+    "它属于故障机器人相关内容吗？",
+    "它属于观者相关内容吗？",
+    "它会施加或利用中毒效果吗？",
+    "它会生成或消耗球吗？",
+    "它和姿态切换有关吗？",
+    "它会造成多段伤害吗？",
+    "它会影响手牌数量吗？",
+    "它会消耗、保留或复制卡牌吗？",
+    "它会给敌人施加易伤、虚弱或易伤类负面状态吗？",
+    "它会给自己增加能力或长期效果吗？",
+    "它通常适合前期使用吗？",
+    "它通常适合构筑核心套路吗？",
+    "它的稀有度通常较高吗？",
+    "它升级后变化很明显吗？",
+    "它通常需要特定配合才强吗？",
+    "它更像防御资源而不是输出资源吗？",
+    "它会在回合结束或战斗结束时触发效果吗？",
+    "它和生命值、治疗或自伤有关吗？"
+  ]
+};
 
 const state = {
   game: null,
+  pendingGameMode: "normal",
+  activeGameMode: "normal",
+  autoQuestionDeck: [],
+  autoQuestionIndex: 0,
   wordbank: {},
   categoryCovers: {},
   favorites: [],
   gameHistory: [],
+  historyMode: "normal",
+  dailyStatus: null,
   gameHistoryVisibleCount: 10,
   activeHistoryRecord: null,
   highlightHistoryRecordKey: "",
@@ -104,8 +324,11 @@ const els = {
   mainInput: document.querySelector("#mainInput"),
   submitBtn: document.querySelector("#submitBtn"),
   rerollPromptBtn: document.querySelector("#rerollPromptBtn"),
-  usePromptBtn: document.querySelector("#usePromptBtn"),
   clearInputBtn: document.querySelector("#clearInputBtn"),
+  autoAskPanel: document.querySelector("#autoAskPanel"),
+  autoAskProgress: document.querySelector("#autoAskProgress"),
+  autoAskPreview: document.querySelector("#autoAskPreview"),
+  autoAskBtn: document.querySelector("#autoAskBtn"),
   finalGuessBtn: document.querySelector("#finalGuessBtn"),
   clueBtn: document.querySelector("#clueBtn"),
   revealBtn: document.querySelector("#revealBtn"),
@@ -114,9 +337,17 @@ const els = {
   favoriteCurrentBtn: document.querySelector("#favoriteCurrentBtn"),
   rerollCurrentBtn: document.querySelector("#rerollCurrentBtn"),
   backToCategoryBtn: document.querySelector("#backToCategoryBtn"),
-  newGameBtn: document.querySelector("#newGameBtn"),
+  playToolbox: document.querySelector("#playToolbox"),
+  mobileToolToggle: document.querySelector("#mobileToolToggle"),
+  mobileFinalGuessBtn: document.querySelector("#mobileFinalGuessBtn"),
+  mobileToolClose: document.querySelector("#mobileToolClose"),
+  mobileToolScrim: document.querySelector("#mobileToolScrim"),
   chooseBankModeBtn: document.querySelector("#chooseBankModeBtn"),
+  autoAskModeBtn: document.querySelector("#autoAskModeBtn"),
   dailyModeBtn: document.querySelector("#dailyModeBtn"),
+  dailyModeStatus: document.querySelector("#dailyModeStatus"),
+  normalHistoryTab: document.querySelector("#normalHistoryTab"),
+  dailyHistoryTab: document.querySelector("#dailyHistoryTab"),
   gameModePanel: document.querySelector("#gameModePanel"),
   gameCategoryPanel: document.querySelector("#gameCategoryPanel"),
   gamePlayPanel: document.querySelector("#gamePlayPanel"),
@@ -317,28 +548,52 @@ function setLoading(isLoading) {
   els.revealBtn.disabled = isLoading || isOver;
   els.clueBtn.disabled = isLoading || isOver || !canShowMoreClues();
   els.backToCategoryBtn.disabled = isLoading;
-  els.newGameBtn.disabled = isLoading;
   els.rerollCurrentBtn.disabled = isLoading;
   els.rerollPromptBtn.disabled = isLoading || isOver;
-  els.usePromptBtn.disabled = isLoading || isOver;
   els.clearInputBtn.disabled = isLoading || isOver;
+  if (els.mobileFinalGuessBtn) els.mobileFinalGuessBtn.disabled = isLoading || isOver;
+  els.autoAskBtn.disabled = isLoading || isOver || state.autoQuestionIndex >= state.autoQuestionDeck.length;
+  els.autoAskBtn.textContent = isLoading ? "随机提问中" : "再问个随机问题";
   els.submitBtn.textContent = isLoading ? "提问中" : "提问";
 }
 
+function askedQuestionSet() {
+  return new Set((state.game?.history || [])
+    .filter((item) => item.type === "question")
+    .map((item) => String(item.text || "").trim())
+    .filter(Boolean));
+}
+
+function askQuestionPoolForCurrentGame() {
+  const category = state.game?.category || [...state.selectedCategories][0] || "";
+  return CATEGORY_ASK_QUESTIONS[category] || COMMON_ASK_QUESTIONS;
+}
+
+function availableAskPlaceholders() {
+  const asked = askedQuestionSet();
+  return askQuestionPoolForCurrentGame().filter((question) => !asked.has(question));
+}
+
 function randomAskPlaceholder() {
-  return ASK_PLACEHOLDERS[Math.floor(Math.random() * ASK_PLACEHOLDERS.length)];
+  const pool = availableAskPlaceholders();
+  if (!pool.length) return "";
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function shuffledAskQuestions(limit = AUTO_QUESTION_LIMIT) {
+  const pool = availableAskPlaceholders();
+  return pool
+    .sort(() => Math.random() - 0.5)
+    .slice(0, Math.min(limit, pool.length));
+}
+
+function isAutoAskMode() {
+  return state.activeGameMode === "auto";
 }
 
 function refreshMainInputPlaceholder() {
   state.currentAskPlaceholder = randomAskPlaceholder();
-  els.mainInput.placeholder = state.currentAskPlaceholder;
-}
-
-function useCurrentAskPlaceholder() {
-  if (!state.currentAskPlaceholder) refreshMainInputPlaceholder();
-  els.mainInput.value = state.currentAskPlaceholder;
-  updateClearInputButton();
-  els.mainInput.focus();
+  els.mainInput.placeholder = state.currentAskPlaceholder || "随机问题已经问完了，请手动输入新问题。";
 }
 
 function clearQuestionInput() {
@@ -346,6 +601,11 @@ function clearQuestionInput() {
   refreshMainInputPlaceholder();
   updateClearInputButton();
   els.mainInput.focus();
+}
+
+function setPlayToolboxOpen(open) {
+  els.playToolbox?.classList.toggle("open", open);
+  els.mobileToolScrim?.classList.toggle("show", open);
 }
 
 function updateClearInputButton() {
@@ -357,6 +617,10 @@ function goGameHome() {
   url.searchParams.delete("share");
   window.history.replaceState(null, "", url);
   state.game = null;
+  state.pendingGameMode = "normal";
+  state.activeGameMode = "normal";
+  state.autoQuestionDeck = [];
+  state.autoQuestionIndex = 0;
   localStorage.removeItem("guess-word-game-id");
   setMessage("");
   refreshMainInputPlaceholder();
@@ -382,6 +646,8 @@ function setGameStage(stage) {
   els.gameModePanel.classList.toggle("hidden", stage !== "mode");
   els.gameCategoryPanel.classList.toggle("hidden", stage !== "category");
   els.gamePlayPanel.classList.toggle("hidden", stage !== "play");
+  if (stage !== "play") els.autoAskPanel.classList.add("hidden");
+  if (stage !== "play") setPlayToolboxOpen(false);
   if (stage === "category") renderCategoryPicker();
   if (stage === "play") renderGame();
 }
@@ -390,6 +656,7 @@ function returnToCategoryPicker() {
   if (state.game?.category) {
     state.selectedCategories = new Set([state.game.category]);
   }
+  state.pendingGameMode = state.activeGameMode;
   setMessage("");
   setGameStage("category");
 }
@@ -551,6 +818,7 @@ function renderGame() {
   const questionTotal = history.filter((item) => item.type === "question").length;
   const guessTotal = history.filter((item) => item.type === "guess").length;
   const isOver = isGameOver();
+  const autoMode = isAutoAskMode();
   const shownClues = game?.revealedClues || [];
   const clueIndex = game?.clueIndex || 0;
   const clueCount = game?.clueCount || 0;
@@ -605,13 +873,17 @@ function renderGame() {
   els.mainInput.disabled = isOver;
   els.submitBtn.disabled = isOver;
   els.rerollPromptBtn.disabled = isOver;
-  els.usePromptBtn.disabled = isOver;
   els.clearInputBtn.disabled = isOver;
   els.finalGuessBtn.disabled = isOver;
+  if (els.mobileFinalGuessBtn) els.mobileFinalGuessBtn.disabled = isOver;
   els.revealBtn.disabled = isOver;
   els.clueBtn.disabled = isOver || !canShowMoreClues();
   els.playActionStack.classList.toggle("hidden", isOver);
-  els.playForm.classList.toggle("hidden", isOver);
+  els.playForm.classList.toggle("hidden", isOver || autoMode);
+  els.autoAskPanel.classList.toggle("hidden", isOver || !autoMode);
+  els.autoAskProgress.textContent = `已问 ${state.autoQuestionIndex}/${state.autoQuestionDeck.length} 个随机问题`;
+  els.autoAskPreview.textContent = state.autoQuestionDeck[state.autoQuestionIndex] || "二十个随机问题已经全部问完。";
+  els.autoAskBtn.disabled = isOver || state.autoQuestionIndex >= state.autoQuestionDeck.length;
   els.finalActionRow.classList.toggle("hidden", isOver);
   els.shareBtn.classList.toggle("hidden", !isOver || !game?.shareId);
   els.favoriteCurrentBtn.classList.toggle("hidden", !isOver || !game?.category || !game?.revealedWord);
@@ -698,13 +970,17 @@ function historyItemAction(item, itemIndex, history) {
 }
 
 function historyItemResult(item) {
-  if (item.type === "question") return `AI：${item.answer}`;
+  if (item.type === "question") {
+    if (item.answer === "无法回答") return "AI：请换个问法";
+    return `AI：${item.answer}`;
+  }
   if (item.type === "guess") return item.correct ? "猜测正确" : "猜测错误";
   if (item.type === "hint") return `获取线索：${item.answer}`;
   return `正解：${item.answer}`;
 }
 
 function applyHistoryResultClass(element, item) {
+  if (item.type === "question" && item.answer === "无法回答") element.classList.add("unclear");
   if (item.type === "guess") element.classList.add(item.correct ? "correct" : "wrong");
   if (item.type === "hint") element.classList.add("hint");
   if (item.type === "reveal") element.classList.add("reveal");
@@ -757,7 +1033,8 @@ function observeHistoryLoadMore(element) {
 
 async function loadGameHistory() {
   try {
-    state.gameHistory = await api("/api/history");
+    const records = await api(`/api/history?mode=${encodeURIComponent(state.historyMode)}`);
+    state.gameHistory = records.filter((record) => (record.mode || "normal") === state.historyMode);
     state.activeHistoryRecord = null;
     state.gameHistoryVisibleCount = 10;
     renderGameHistory();
@@ -771,9 +1048,12 @@ async function loadGameHistory() {
 function renderGameHistory() {
   state.activeHistoryRecord = null;
   setHistoryPanelHeaderVisible(true);
+  els.normalHistoryTab?.classList.toggle("active", state.historyMode === "normal");
+  els.dailyHistoryTab?.classList.toggle("active", state.historyMode === "daily");
   if (historyLoadMoreObserver) historyLoadMoreObserver.disconnect();
   els.gameHistoryList.innerHTML = "";
   els.emptyGameHistory.classList.toggle("hidden", state.gameHistory.length > 0);
+  els.emptyGameHistory.textContent = state.historyMode === "daily" ? "还没有完成的每日猜题。" : "还没有完成的普通猜题。";
   const visibleRecords = state.gameHistory.slice(0, state.gameHistoryVisibleCount);
   const groups = ["今天", "昨天", "更早以前"]
     .map((label) => ({
@@ -878,7 +1158,7 @@ function createLocateButton(category, word) {
   button.className = "locate-button";
   button.title = "在词库中查看";
   button.setAttribute("aria-label", `在词库中查看 ${word}`);
-  button.textContent = "↗";
+  button.textContent = "⌖";
   button.addEventListener("click", (event) => {
     event.stopPropagation();
     jumpToLibraryEntry(category, word);
@@ -1102,16 +1382,16 @@ function renderShare() {
     if (item.type === "hint") text.textContent = `查看线索：${item.answer}`;
     if (item.type === "reveal") text.textContent = "玩家选择公布答案";
     const result = document.createElement("strong");
-    if (item.type === "question") result.textContent = `AI：${item.answer}`;
+    if (item.type === "question") result.textContent = item.answer === "无法回答" ? "AI：请换个问法" : `AI：${item.answer}`;
     if (item.type === "guess") result.textContent = item.correct ? "答案正确" : "答案错误";
-    if (item.type === "hint") result.textContent = "线索已出现";
+    if (item.type === "hint") result.textContent = "线索已出示";
     if (item.type === "reveal") result.textContent = `正解：${item.answer}`;
     card.append(label, text, result);
     els.shareSteps.append(card);
   });
 
   const done = state.shareStep >= steps.length;
-  els.nextShareStepBtn.textContent = done ? `最终答案：${record.word}` : "揭晓下一步";
+  els.nextShareStepBtn.textContent = done ? `最终答案：${record.word}` : "揭晓下一条";
   els.nextShareStepBtn.disabled = done;
 }
 
@@ -1155,7 +1435,7 @@ function renderCategoryPicker() {
     row.addEventListener("click", async () => {
       if (state.selectedCategories.has(category)) {
         try {
-          await startNewGame([category]);
+          await startNewGame([category], state.pendingGameMode);
         } catch (error) {
           showToast(error.message, true);
         }
@@ -1265,7 +1545,7 @@ function renderLibraryCards() {
     const meta = document.createElement("span");
     meta.textContent = `含 ${entries.length} 个词条`;
     const sample = document.createElement("small");
-    sample.textContent = entries.slice(0, 3).map((entry) => entry.word).join("、") || "空词库";
+    sample.textContent = entries.slice(0, 3).map((entry) => entry.word).join("，") || "空词库";
     body.append(title, meta, sample);
     card.append(cover, editBtn, body);
     els.libraryCards.append(card);
@@ -1374,7 +1654,7 @@ function renderEditor(category) {
     editBtn.className = `entry-edit-button${isEditing ? " active" : ""}`;
     editBtn.title = isEditing ? "收起编辑" : "编辑词条";
     editBtn.setAttribute("aria-label", `${isEditing ? "收起编辑" : "编辑词条"} ${entry.word}`);
-    editBtn.textContent = isEditing ? "✓" : "✎";
+    editBtn.textContent = isEditing ? "×" : "✎";
     editBtn.addEventListener("click", () => {
       state.editingEntry = isEditing ? null : { category, index };
       renderEditor(category);
@@ -1583,13 +1863,25 @@ async function loadWordbank() {
   renderCategoryPicker();
 }
 
+async function loadDailyStatus() {
+  try {
+    state.dailyStatus = await api("/api/daily/status");
+    const status = state.dailyStatus.completed ? "已经猜完" : "尚未猜题";
+    els.dailyModeStatus.className = `daily-mode-status ${state.dailyStatus.completed ? "done" : "pending"}`;
+    els.dailyModeStatus.textContent = status;
+  } catch {
+    els.dailyModeStatus.className = "daily-mode-status pending";
+    els.dailyModeStatus.textContent = "登录后可用";
+  }
+}
+
 async function refreshWordbank(bank) {
   state.wordbank = bank || await api("/api/wordbank");
   renderCategoryPicker();
   renderLibrary();
 }
 
-async function startNewGame(categories) {
+async function startNewGame(categories, mode = state.pendingGameMode || "normal") {
   if (!categories.length) {
     showToast("请先选择词库。", true);
     setGameStage("category");
@@ -1601,6 +1893,22 @@ async function startNewGame(categories) {
     body: JSON.stringify({ categories })
   });
   localStorage.setItem("guess-word-game-id", state.game.id);
+  state.activeGameMode = mode === "auto" ? "auto" : "normal";
+  state.autoQuestionDeck = state.activeGameMode === "auto" ? shuffledAskQuestions() : [];
+  state.autoQuestionIndex = 0;
+  setMessage("");
+  refreshMainInputPlaceholder();
+  setGameStage("play");
+  if (state.activeGameMode === "auto") await askNextAutoQuestion();
+}
+
+async function startDailyGame() {
+  setMessage("正在载入今日题目...");
+  state.game = await api("/api/daily/game", { method: "POST" });
+  localStorage.setItem("guess-word-game-id", state.game.id);
+  state.activeGameMode = "daily";
+  state.autoQuestionDeck = [];
+  state.autoQuestionIndex = 0;
   setMessage("");
   refreshMainInputPlaceholder();
   setGameStage("play");
@@ -1619,16 +1927,20 @@ async function rerollCurrentCategory() {
     return;
   }
   state.selectedCategories = new Set([category]);
-  await startNewGame([category]);
+  await startNewGame([category], state.activeGameMode === "auto" ? "auto" : "normal");
 }
 
 async function submitTurn(event) {
   event.preventDefault();
-  const text = els.mainInput.value.trim();
-  if (!text) return;
+  const text = els.mainInput.value.trim() || state.currentAskPlaceholder || randomAskPlaceholder();
   if (!state.game) {
     showToast("请先选择词库并开始猜词。", true);
     setGameStage("category");
+    return;
+  }
+  if (!text) {
+    showToast("随机问题已经问完了，请手动输入新问题。", true);
+    els.mainInput.focus();
     return;
   }
 
@@ -1641,9 +1953,50 @@ async function submitTurn(event) {
       body: JSON.stringify({ gameId: state.game.id, question: text })
     });
     els.mainInput.value = "";
+    refreshMainInputPlaceholder();
     updateClearInputButton();
     setMessage("");
     localStorage.setItem("guess-word-game-id", state.game.id);
+    renderGame();
+  } catch (error) {
+    setMessage(error.message, true);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function askNextAutoQuestion() {
+  if (!state.game) {
+    showToast("请先选择词库并开始猜词。", true);
+    setGameStage("category");
+    return;
+  }
+  if (!isAutoAskMode() || isGameOver()) return;
+  if (state.autoQuestionIndex >= state.autoQuestionDeck.length) {
+    showToast("二十个随机问题已经全部问完。", true);
+    return;
+  }
+
+  const question = state.autoQuestionDeck[state.autoQuestionIndex];
+  setLoading(true);
+  setMessage("AI 正在回答随机问题...");
+
+  try {
+    state.game = await api("/api/ask", {
+      method: "POST",
+      body: JSON.stringify({ gameId: state.game.id, question })
+    });
+    state.autoQuestionIndex += 1;
+    localStorage.setItem("guess-word-game-id", state.game.id);
+    if (state.autoQuestionIndex >= state.autoQuestionDeck.length) {
+      setMessage("二十个随机问题已问完，正在公布答案...");
+      state.game = await api("/api/reveal", {
+        method: "POST",
+        body: JSON.stringify({ gameId: state.game.id })
+      });
+      localStorage.setItem("guess-word-game-id", state.game.id);
+    }
+    setMessage("");
     renderGame();
   } catch (error) {
     setMessage(error.message, true);
@@ -1701,6 +2054,7 @@ async function revealAnswer() {
     localStorage.setItem("guess-word-game-id", state.game.id);
     setMessage("");
     renderGame();
+    if (state.game.mode === "daily") void loadDailyStatus();
   } catch (error) {
     setMessage(error.message, true);
   } finally {
@@ -1719,6 +2073,7 @@ function openFinalGuessModal() {
     return;
   }
   if (isGameOver()) return;
+  setPlayToolboxOpen(false);
   resetFinalGuessForm();
   els.finalGuessModal.classList.remove("hidden");
   els.finalGuessInput.focus();
@@ -1809,6 +2164,7 @@ async function submitFinalGuess(event) {
     const latest = state.game.history.at(-1);
     renderGame();
     renderFinalGuessResult(Boolean(latest?.correct));
+    if (state.game.mode === "daily" && latest?.correct) void loadDailyStatus();
   } catch (error) {
     state.finalGuessOutcome = null;
     els.finalGuessForm.classList.remove("judging");
@@ -2161,7 +2517,7 @@ function addClueInline(container, category, entryIndex, word, image = "") {
   saveBtn.type = "button";
   saveBtn.className = "icon-tool";
   saveBtn.title = "保存线索";
-  saveBtn.textContent = "✓";
+  saveBtn.textContent = "√";
 
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
@@ -2234,7 +2590,7 @@ function editClueInline(item, category, entryIndex, clueIndex, word, image = "")
   saveBtn.type = "button";
   saveBtn.className = "icon-tool";
   saveBtn.title = "保存线索";
-  saveBtn.textContent = "✓";
+  saveBtn.textContent = "√";
 
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
@@ -2298,26 +2654,48 @@ async function regenerateClues(category, index, word, button) {
 els.gameNavBtn.addEventListener("click", goGameHome);
 els.libraryNavBtn.addEventListener("click", () => setView("library"));
 els.historyNavBtn.addEventListener("click", () => setView("history"));
-els.chooseBankModeBtn.addEventListener("click", () => setGameStage("category"));
-els.dailyModeBtn.addEventListener("click", () => showToast("每日一题稍后开放。"));
+els.chooseBankModeBtn.addEventListener("click", () => {
+  state.pendingGameMode = "normal";
+  setGameStage("category");
+});
+els.autoAskModeBtn.addEventListener("click", () => {
+  state.pendingGameMode = "auto";
+  setGameStage("category");
+});
+els.dailyModeBtn.addEventListener("click", async () => {
+  try {
+    await startDailyGame();
+  } catch (error) {
+    showToast(error.message, true);
+  }
+});
+els.normalHistoryTab?.addEventListener("click", () => {
+  state.historyMode = "normal";
+  void loadGameHistory();
+});
+els.dailyHistoryTab?.addEventListener("click", () => {
+  state.historyMode = "daily";
+  void loadGameHistory();
+});
 els.backToModeBtn.addEventListener("click", () => setGameStage("mode"));
 els.randomCategoryBtn.addEventListener("click", selectRandomCategory);
 els.startSelectedGameBtn.addEventListener("click", async () => {
   try {
-    await newGame();
+    await startNewGame([...state.selectedCategories], state.pendingGameMode);
   } catch (error) {
     showToast(error.message, true);
   }
 });
 els.playForm.addEventListener("submit", submitTurn);
+els.autoAskBtn.addEventListener("click", askNextAutoQuestion);
 els.rerollPromptBtn.addEventListener("click", () => {
   refreshMainInputPlaceholder();
   els.mainInput.focus();
 });
 els.mainInput.addEventListener("input", updateClearInputButton);
-els.usePromptBtn.addEventListener("click", useCurrentAskPlaceholder);
 els.clearInputBtn.addEventListener("click", clearQuestionInput);
 els.finalGuessBtn.addEventListener("click", openFinalGuessModal);
+els.mobileFinalGuessBtn?.addEventListener("click", openFinalGuessModal);
 els.finalGuessForm.addEventListener("submit", submitFinalGuess);
 els.finalGuessCloseBtn.addEventListener("click", closeFinalGuessModal);
 els.finalGuessCancelBtn.addEventListener("click", closeFinalGuessModal);
@@ -2328,6 +2706,9 @@ els.clueBtn.addEventListener("click", showClue);
 els.revealBtn.addEventListener("click", revealAnswer);
 els.shareBtn.addEventListener("click", shareCurrentGame);
 els.backToCategoryBtn.addEventListener("click", returnToCategoryPicker);
+els.mobileToolToggle?.addEventListener("click", () => setPlayToolboxOpen(true));
+els.mobileToolClose?.addEventListener("click", () => setPlayToolboxOpen(false));
+els.mobileToolScrim?.addEventListener("click", () => setPlayToolboxOpen(false));
 els.favoriteCurrentBtn.addEventListener("click", () => {
   if (!state.game?.category || !state.game?.revealedWord) return;
   toggleFavorite(state.game.category, state.game.revealedWord);
@@ -2353,19 +2734,6 @@ els.exitShareBtn.addEventListener("click", () => {
   url.searchParams.delete("share");
   window.history.replaceState(null, "", url);
   setView("game");
-});
-els.newGameBtn.addEventListener("click", async () => {
-  try {
-    if (state.game?.category) await rerollCurrentCategory();
-    else {
-      state.game = null;
-      localStorage.removeItem("guess-word-game-id");
-      setMessage("");
-      setGameStage("category");
-    }
-  } catch (error) {
-    showToast(error.message, true);
-  }
 });
 els.openCategoryModalBtn.addEventListener("click", openCategoryModal);
 els.modalCategoryCoverInput.addEventListener("change", () => updateFileName(els.modalCategoryCoverInput, els.modalCategoryCoverName));
@@ -2419,6 +2787,7 @@ MOBILE_QUERY.addEventListener("change", applyLibraryCardMode);
 refreshMainInputPlaceholder();
 loadFavorites();
 await loadWordbank();
+await loadDailyStatus();
 renderLibrary();
 setGameStage("mode");
 

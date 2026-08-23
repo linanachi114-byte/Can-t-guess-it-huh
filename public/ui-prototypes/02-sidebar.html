@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>猜不到吧 UI 原型 02 - 侧边栏增强版</title>
+    <link rel="stylesheet" href="./prototype.css" />
+    <style>
+      .sidebar-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 330px;
+        gap: 18px;
+        align-items: start;
+      }
+
+      .play-column,
+      .toolbox {
+        display: grid;
+        gap: 16px;
+      }
+
+      .status-strip {
+        display: grid;
+        grid-template-columns: 66px minmax(126px, 1fr) minmax(126px, 1fr) minmax(126px, 1fr) 66px;
+        gap: 10px;
+        align-items: stretch;
+      }
+
+      .status-tile {
+        display: grid;
+        align-content: center;
+        min-height: 66px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fbfcfc;
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+      }
+
+      .status-tile span {
+        color: #64717c;
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .status-tile strong {
+        color: #0f171d;
+        font-size: 21px;
+        line-height: 1.08;
+      }
+
+      .status-tile .count {
+        font-size: 26px;
+      }
+
+      .status-strip .icon-btn {
+        min-height: 66px;
+        border-radius: 8px;
+        background: #eefaf7;
+      }
+
+      .play-surface {
+        display: grid;
+        gap: 16px;
+        padding: 18px;
+        border: 1px solid #d5e4e0;
+        border-radius: 8px;
+        background: #fbfdfc;
+      }
+
+      .ask-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .ask-header h2 {
+        font-size: 24px;
+      }
+
+      .ask-mode-pill {
+        border: 1px solid #b7ded6;
+        border-radius: 999px;
+        background: #eefaf7;
+        color: var(--accent-dark);
+        padding: 7px 11px;
+        font-size: 12px;
+        font-weight: 1000;
+        white-space: nowrap;
+      }
+
+      .question-input {
+        grid-template-columns: minmax(0, 1fr) 48px;
+        margin-top: 0;
+      }
+
+      .question-input input {
+        font-size: 21px;
+      }
+
+      .question-input textarea {
+        min-height: 64px;
+        max-height: 112px;
+        resize: none;
+        font-size: 18px;
+        line-height: 1.35;
+      }
+
+      .input-clear {
+        position: relative;
+      }
+
+      .input-clear input,
+      .input-clear textarea {
+        padding-right: 48px;
+      }
+
+      .clear-inside {
+        position: absolute;
+        right: 62px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 28px;
+        height: 28px;
+        display: none;
+        place-items: center;
+        border-radius: 999px;
+        background: #edf1f3;
+        color: #7a8790;
+        font-size: 18px;
+        font-weight: 900;
+      }
+
+      .clear-inside.show {
+        display: grid;
+      }
+
+      .history {
+        min-height: 290px;
+      }
+
+      .history-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .history-head small {
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      .history-feed {
+        display: grid;
+        gap: 10px;
+      }
+
+      .empty-feed {
+        color: var(--muted);
+        font-size: 18px;
+      }
+
+      .toolbox {
+        position: sticky;
+        top: 18px;
+      }
+
+      .mobile-fab-group,
+      .mobile-tool-toggle,
+      .mobile-final-toggle,
+      .mobile-scrim,
+      .mobile-tool-close {
+        display: none;
+      }
+
+      .tool-card {
+        display: grid;
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper);
+      }
+
+      .tool-card h3 {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 18px;
+      }
+
+      .tool-card h3 small {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .tool-buttons {
+        display: grid;
+        gap: 9px;
+      }
+
+      .tool-buttons button {
+        min-height: 46px;
+        font-size: 15px;
+      }
+
+      .random-question {
+        color: #12436f;
+        background: #eef6ff;
+        border: 1px solid #b8d4f1;
+      }
+
+      .hint-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .hint-item {
+        padding: 10px 12px;
+        border: 1px solid #f3b65b;
+        border-radius: 8px;
+        background: #fffaf2;
+        color: #7a3d00;
+        font-weight: 900;
+      }
+
+      .answer-preview {
+        display: none;
+        grid-template-columns: 100px minmax(0, 1fr);
+        gap: 14px;
+        align-items: center;
+        padding: 14px;
+        border: 1px solid #a8dfc0;
+        border-radius: 8px;
+        background: #ecfbf1;
+      }
+
+      .answer-preview.show {
+        display: grid;
+      }
+
+      .answer-preview img {
+        width: 100px;
+        aspect-ratio: 1.2;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid #d9e6e2;
+      }
+
+      .answer-preview strong {
+        display: block;
+        font-size: 30px;
+        line-height: 1.05;
+      }
+
+      .toast {
+        position: fixed;
+        left: 50%;
+        top: 22px;
+        transform: translateX(-50%) translateY(-18px);
+        opacity: 0;
+        pointer-events: none;
+        transition: 0.2s ease;
+        z-index: 20;
+        padding: 11px 14px;
+        border: 1px solid #9fd3c9;
+        border-radius: 8px;
+        background: #eefaf7;
+        color: var(--accent-dark);
+        font-weight: 900;
+        box-shadow: var(--shadow);
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      .modal-mask {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        display: none;
+        place-items: center;
+        padding: 18px;
+        background: rgba(23, 32, 38, 0.36);
+      }
+
+      .modal-mask.show {
+        display: grid;
+      }
+
+      .modal-card {
+        width: min(420px, 100%);
+        display: grid;
+        gap: 14px;
+        padding: 20px;
+        border-radius: 8px;
+        background: white;
+        box-shadow: 0 28px 80px rgba(23, 32, 38, 0.24);
+      }
+
+      .modal-card input {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 13px 14px;
+        font-size: 20px;
+        outline: none;
+      }
+
+      .modal-result {
+        display: none;
+        padding: 12px;
+        border-radius: 8px;
+        font-weight: 900;
+      }
+
+      .modal-result.show {
+        display: block;
+      }
+
+      .modal-result.ok {
+        color: var(--accent-dark);
+        background: #eefaf7;
+      }
+
+      .modal-result.bad {
+        color: var(--danger);
+        background: var(--danger-soft);
+      }
+
+      @media (max-width: 760px) {
+        .board {
+          padding: 12px;
+        }
+
+        .status-strip {
+          grid-template-columns: 44px minmax(82px, 1fr) minmax(64px, 0.72fr) minmax(64px, 0.72fr);
+          gap: 7px;
+        }
+
+        .status-strip .icon-btn {
+          min-height: 58px;
+          font-size: 20px;
+        }
+
+        .status-tile {
+          min-height: 48px;
+          padding: 7px 8px;
+        }
+
+        .status-tile span {
+          font-size: 10px;
+        }
+
+        .status-tile strong {
+          font-size: 16px;
+        }
+
+        .status-tile .count {
+          font-size: 18px;
+        }
+
+        .sidebar-layout {
+          grid-template-columns: 1fr;
+          overflow: visible;
+        }
+
+        .toolbox {
+          position: fixed;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 26;
+          width: min(340px, 88vw);
+          align-content: start;
+          padding: 16px;
+          overflow-y: auto;
+          background: #fffaf2;
+          border-left: 1px solid #decfb9;
+          box-shadow: -18px 0 48px rgba(23, 32, 38, 0.18);
+          transform: translateX(105%);
+          transition: transform 0.24s ease;
+        }
+
+        .toolbox.open {
+          transform: translateX(0);
+        }
+
+        .mobile-fab-group {
+          position: fixed;
+          right: 10px;
+          top: 42%;
+          z-index: 24;
+          display: grid;
+          gap: 10px;
+        }
+
+        .mobile-tool-toggle,
+        .mobile-final-toggle {
+          display: grid;
+          place-items: center;
+          width: 46px;
+          height: 46px;
+          border: 1px solid #f1c66f;
+          border-radius: 999px;
+          background: #fff1ba;
+          color: #8a5200;
+          box-shadow: -8px 10px 24px rgba(23, 32, 38, 0.16);
+        }
+
+        .mobile-final-toggle {
+          border-color: #ffb8b0;
+          background: #b92720;
+          color: white;
+        }
+
+        .mobile-tool-toggle svg,
+        .mobile-final-toggle svg {
+          width: 23px;
+          height: 23px;
+          fill: none;
+          stroke: currentColor;
+          stroke-width: 2.2;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+        }
+
+        .mobile-scrim {
+          position: fixed;
+          inset: 0;
+          z-index: 25;
+          background: rgba(23, 32, 38, 0.32);
+        }
+
+        .mobile-scrim.show {
+          display: block;
+        }
+
+        .mobile-tool-close {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 4px 0 2px;
+          font-weight: 1000;
+        }
+
+        .mobile-tool-close button {
+          width: 40px;
+          height: 40px;
+          border-radius: 999px;
+          background: #eefaf7;
+          color: var(--accent-dark);
+          font-size: 24px;
+          font-weight: 900;
+        }
+
+        .ask-header,
+        .history-head {
+          align-items: start;
+          flex-direction: column;
+        }
+
+        .answer-preview {
+          grid-template-columns: 82px minmax(0, 1fr);
+        }
+
+        .answer-preview img {
+          width: 82px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="brand">
+        <img src="../nanachi-project-logo.png" alt="" />
+        <div>
+          <p class="eyebrow">AI 猜词游戏</p>
+          <h1>猜不到吧</h1>
+        </div>
+      </header>
+
+      <nav class="prototype-tabs">
+        <a href="./01-focus.html">01 聚焦问答</a>
+        <a class="active" href="./02-sidebar.html">02 侧边栏</a>
+        <a href="./03-bottom-actions.html">03 底部动作</a>
+        <a href="./04-drawer.html">04 工具抽屉</a>
+        <a href="./05-timeline.html">05 时间线</a>
+      </nav>
+
+      <section class="board sidebar-layout">
+        <div class="play-column">
+          <div class="status-strip">
+            <button id="backBtn" class="icon-btn" aria-label="返回选择词库">←</button>
+            <div class="status-tile">
+              <span>词库</span>
+              <strong>自然</strong>
+            </div>
+            <div class="status-tile">
+              <span>提问</span>
+              <strong id="questionCount" class="count">0</strong>
+            </div>
+            <div class="status-tile">
+              <span>猜测</span>
+              <strong id="guessCount" class="count">0</strong>
+            </div>
+          </div>
+
+          <section class="play-surface">
+            <div class="ask-header">
+              <div>
+                <h2>问一个是 / 否问题</h2>
+              </div>
+            </div>
+            <div class="question-input input-clear">
+              <textarea id="questionInput" rows="2" placeholder="它和植物有关吗？"></textarea>
+              <button id="clearBtn" class="clear-inside" aria-label="清空输入">×</button>
+              <button id="promptBtn" class="secondary round-icon" title="换一个提示问题">↻</button>
+            </div>
+            <button id="askBtn" class="primary">提问</button>
+            <p class="layout-note" style="margin:0">如果不输入内容直接提问，会自动使用输入框中的随机问题。</p>
+          </section>
+
+          <section id="answerPreview" class="answer-preview">
+            <img src="../images/自然与生物/树.png" alt="" onerror="this.src='../images/placeholder.svg'" />
+            <div>
+              <span class="compact-label">答案揭晓</span>
+              <strong>树</strong>
+              <p class="layout-note" style="margin:6px 0 0">来自词库：自然与生物</p>
+            </div>
+          </section>
+
+          <section class="history">
+            <div class="history-head">
+              <h2>历史记录</h2>
+            </div>
+            <div id="historyFeed" class="history-feed">
+              <p class="empty-feed">还没有记录。先问一个问题试试。</p>
+            </div>
+          </section>
+        </div>
+
+        <div class="mobile-fab-group" aria-label="移动端快捷操作">
+          <button id="mobileToolToggle" class="mobile-tool-toggle" type="button" aria-label="打开线索和终局操作">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M9 18h6" />
+              <path d="M10 22h4" />
+              <path d="M8.2 14.8A6.8 6.8 0 1 1 15.8 14.8c-.9.7-1.4 1.6-1.6 2.7H9.8c-.2-1.1-.7-2-1.6-2.7z" />
+              <path d="M12 6v2" />
+              <path d="M6.8 8.2l1.4 1.4" />
+              <path d="M17.2 8.2l-1.4 1.4" />
+            </svg>
+          </button>
+          <button id="mobileFinalToggle" class="mobile-final-toggle" type="button" aria-label="提交最终答案">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M4 19.5V20h.5L16.8 7.7l-4.5-4.5L4 11.5v8z" />
+              <path d="M13.4 2.1l4.5 4.5" />
+              <path d="M15.5 18h5" />
+            </svg>
+          </button>
+        </div>
+        <div id="mobileScrim" class="mobile-scrim"></div>
+
+        <aside id="toolbox" class="toolbox">
+          <div class="mobile-tool-close">
+            <span>本局工具箱</span>
+            <button id="mobileToolClose" type="button" aria-label="关闭侧边栏">×</button>
+          </div>
+          <section class="tool-card">
+            <h3>线索板 <small id="hintProgress">尚未揭示</small></h3>
+            <div id="hintList" class="hint-list"></div>
+            <div class="tool-buttons">
+              <button id="hintBtn" class="warning">没有思路？点此揭示线索</button>
+            </div>
+          </section>
+
+          <section class="tool-card">
+            <h3>终局操作 <small>低频但重要</small></h3>
+            <div class="tool-buttons">
+              <button id="guessBtn" class="danger">我已经猜出来答案了</button>
+              <button id="revealBtn" class="ghost">我猜不出来，请公布答案</button>
+            </div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <div id="toast" class="toast"></div>
+    <div id="guessModal" class="modal-mask">
+      <form class="modal-card">
+        <h2>请输入你的最终答案</h2>
+        <input id="guessInput" autocomplete="off" placeholder="比如：树" />
+        <div id="guessResult" class="modal-result"></div>
+        <button class="primary" type="submit">提交最终答案</button>
+        <button id="closeModalBtn" class="ghost" type="button">取消</button>
+      </form>
+    </div>
+
+    <script>
+      const answer = "树";
+      const answers = ["是", "不是", "是也不是"];
+      const prompts = [
+        "它通常出现在户外吗？",
+        "它和植物有关吗？",
+        "它比成年人高吗？",
+        "它需要人类制造吗？",
+        "它能被直接触摸到吗？",
+        "它和自然环境关系密切吗？"
+      ];
+      const hints = ["自然界中常见", "通常有固定形态", "和植物有关"];
+      const state = { questions: 0, guesses: 0, hintIndex: 0, ended: false, askedPrompts: new Set() };
+
+      const els = {
+        questionInput: document.querySelector("#questionInput"),
+        clearBtn: document.querySelector("#clearBtn"),
+        promptBtn: document.querySelector("#promptBtn"),
+        askBtn: document.querySelector("#askBtn"),
+        hintBtn: document.querySelector("#hintBtn"),
+        hintList: document.querySelector("#hintList"),
+        hintProgress: document.querySelector("#hintProgress"),
+        historyFeed: document.querySelector("#historyFeed"),
+        questionCount: document.querySelector("#questionCount"),
+        guessCount: document.querySelector("#guessCount"),
+        revealBtn: document.querySelector("#revealBtn"),
+        guessBtn: document.querySelector("#guessBtn"),
+        backBtn: document.querySelector("#backBtn"),
+        toolbox: document.querySelector("#toolbox"),
+        mobileToolToggle: document.querySelector("#mobileToolToggle"),
+        mobileFinalToggle: document.querySelector("#mobileFinalToggle"),
+        mobileToolClose: document.querySelector("#mobileToolClose"),
+        mobileScrim: document.querySelector("#mobileScrim"),
+        answerPreview: document.querySelector("#answerPreview"),
+        toast: document.querySelector("#toast"),
+        guessModal: document.querySelector("#guessModal"),
+        guessInput: document.querySelector("#guessInput"),
+        guessResult: document.querySelector("#guessResult"),
+        closeModalBtn: document.querySelector("#closeModalBtn")
+      };
+
+      function toast(text) {
+        els.toast.textContent = text;
+        els.toast.classList.add("show");
+        window.clearTimeout(toast.timer);
+        toast.timer = window.setTimeout(() => els.toast.classList.remove("show"), 1600);
+      }
+
+      function randomPrompt() {
+        const pool = prompts.filter((prompt) => !state.askedPrompts.has(prompt));
+        if (!pool.length) return "";
+        return pool[Math.floor(Math.random() * pool.length)];
+      }
+
+      function refreshPrompt() {
+        els.questionInput.placeholder = randomPrompt() || "随机问题已经问完了，请手动输入新问题。";
+      }
+
+      function updateCounts() {
+        els.questionCount.textContent = state.questions;
+        els.guessCount.textContent = state.guesses;
+      }
+
+      function addHistory(type, text, result) {
+        const empty = els.historyFeed.querySelector(".empty-feed");
+        if (empty) empty.remove();
+        const card = document.createElement("article");
+        card.className = "history-card";
+        card.innerHTML = `<small>${type}</small><strong></strong><span class="answer-pill"></span>`;
+        card.querySelector("strong").textContent = text;
+        card.querySelector(".answer-pill").textContent = result;
+        els.historyFeed.prepend(card);
+      }
+
+      function ask(question) {
+        if (state.ended) {
+          toast("本局已经结束。");
+          return;
+        }
+        const placeholder = els.questionInput.placeholder === "随机问题已经问完了，请手动输入新问题。" ? "" : els.questionInput.placeholder;
+        const text = question || els.questionInput.value.trim() || placeholder || randomPrompt();
+        if (!text) {
+          toast("随机问题已经问完了，请手动输入新问题。");
+          els.questionInput.focus();
+          return;
+        }
+        if (prompts.includes(text)) state.askedPrompts.add(text);
+        state.questions += 1;
+        const result = answers[(state.questions + text.length) % answers.length];
+        addHistory(`#${state.questions} 提问`, text, `AI：${result}`);
+        els.questionInput.value = "";
+        els.clearBtn.classList.remove("show");
+        refreshPrompt();
+        updateCounts();
+      }
+
+      function revealHint() {
+        if (state.hintIndex >= hints.length) {
+          toast("线索已经全部显示。");
+          return;
+        }
+        state.hintIndex += 1;
+        const item = document.createElement("div");
+        item.className = "hint-item";
+        item.textContent = `${state.hintIndex}. ${hints[state.hintIndex - 1]}`;
+        els.hintList.append(item);
+        els.hintProgress.textContent = state.hintIndex >= hints.length
+          ? "已显示全部线索"
+          : `已展示 ${state.hintIndex}/${hints.length}`;
+        els.hintBtn.textContent = state.hintIndex >= hints.length ? "线索已经全部显示" : "查看下一条线索";
+        addHistory(`#${state.questions + state.guesses + state.hintIndex} 线索`, `查看第 ${state.hintIndex} 条线索`, `获取线索：${hints[state.hintIndex - 1]}`);
+      }
+
+      function revealAnswer() {
+        state.ended = true;
+        els.answerPreview.classList.add("show");
+        toast("答案已揭晓。");
+      }
+
+      function resetDemo() {
+        state.questions = 0;
+        state.guesses = 0;
+        state.hintIndex = 0;
+        state.ended = false;
+        state.askedPrompts.clear();
+        els.historyFeed.innerHTML = '<p class="empty-feed">还没有记录。先问一个问题试试。</p>';
+        els.hintList.innerHTML = "";
+        els.hintProgress.textContent = "尚未揭示";
+        els.hintBtn.textContent = "没有思路？点此揭示线索";
+        els.answerPreview.classList.remove("show");
+        els.questionInput.value = "";
+        refreshPrompt();
+        els.clearBtn.classList.remove("show");
+        updateCounts();
+        toast("已以当前词库换了一题。");
+      }
+
+      function setToolboxOpen(open) {
+        els.toolbox.classList.toggle("open", open);
+        els.mobileScrim.classList.toggle("show", open);
+      }
+
+      els.askBtn.addEventListener("click", () => ask());
+      els.promptBtn.addEventListener("click", () => {
+        refreshPrompt();
+        toast("已换一个提示问题。");
+      });
+      els.questionInput.addEventListener("input", () => {
+        els.clearBtn.classList.toggle("show", Boolean(els.questionInput.value.trim()));
+      });
+      els.questionInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") ask();
+      });
+      els.clearBtn.addEventListener("click", () => {
+        els.questionInput.value = "";
+        refreshPrompt();
+        els.clearBtn.classList.remove("show");
+        els.questionInput.focus();
+      });
+      els.hintBtn.addEventListener("click", revealHint);
+      els.revealBtn.addEventListener("click", revealAnswer);
+      els.backBtn.addEventListener("click", () => toast("这里会返回选择词库界面。"));
+      els.mobileToolToggle.addEventListener("click", () => setToolboxOpen(true));
+      els.mobileFinalToggle.addEventListener("click", () => {
+        setToolboxOpen(false);
+        els.guessBtn.click();
+      });
+      els.mobileToolClose.addEventListener("click", () => setToolboxOpen(false));
+      els.mobileScrim.addEventListener("click", () => setToolboxOpen(false));
+      els.guessBtn.addEventListener("click", () => {
+        setToolboxOpen(false);
+        els.guessModal.classList.add("show");
+        els.guessInput.value = "";
+        els.guessResult.className = "modal-result";
+        els.guessResult.textContent = "";
+        els.guessInput.focus();
+      });
+      els.closeModalBtn.addEventListener("click", () => els.guessModal.classList.remove("show"));
+      els.guessModal.addEventListener("click", (event) => {
+        if (event.target === els.guessModal) els.guessModal.classList.remove("show");
+      });
+      els.guessModal.querySelector("form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const guess = els.guessInput.value.trim();
+        if (!guess) {
+          toast("请输入答案。");
+          return;
+        }
+        state.guesses += 1;
+        updateCounts();
+        const correct = guess === answer;
+        els.guessResult.className = `modal-result show ${correct ? "ok" : "bad"}`;
+        els.guessResult.textContent = correct ? "您的猜测完全正确" : "您的猜测错误";
+        addHistory(`#${state.questions + state.guesses} 猜答案`, guess, correct ? "猜测正确" : "猜测错误");
+        if (correct) revealAnswer();
+      });
+
+      refreshPrompt();
+    </script>
+  </body>
+</html>
