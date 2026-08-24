@@ -290,6 +290,50 @@ const state = {
   entryPages: {}
 };
 
+const GUEST_HISTORY_KEY = "guess-word-guest-history-v1";
+
+function readGuestHistory() {
+  try {
+    const value = JSON.parse(localStorage.getItem(GUEST_HISTORY_KEY) || "[]");
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberFinishedGame(game) {
+  if (!game?.shareId || (!game.isWon && !game.isRevealed)) return;
+  const records = readGuestHistory();
+  if (records.some((record) => record.id === game.shareId)) return;
+  records.unshift({
+    id: game.shareId,
+    shareId: game.shareId,
+    gameId: game.id,
+    mode: game.mode || "normal",
+    dailyDate: game.dailyDate || "",
+    category: game.category,
+    word: game.revealedWord || "",
+    image: game.revealedImage || "",
+    startedAt: game.startedAt,
+    endedAt: new Date().toISOString(),
+    outcome: game.isWon ? "won" : "revealed",
+    questionCount: game.history.filter((item) => item.type === "question").length,
+    guessCount: game.history.filter((item) => item.type === "guess").length,
+    history: game.history,
+  });
+  localStorage.setItem(GUEST_HISTORY_KEY, JSON.stringify(records.slice(0, 80)));
+}
+
+async function mergeGuestHistoryIntoAccount() {
+  const records = readGuestHistory();
+  if (!records.length) return;
+  await api("/api/history/import", {
+    method: "POST",
+    body: JSON.stringify({ ids: records.map((record) => record.id) }),
+  });
+  localStorage.removeItem(GUEST_HISTORY_KEY);
+}
+
 const els = {
   gameNavBtn: document.querySelector("#gameNavBtn"),
   libraryNavBtn: document.querySelector("#libraryNavBtn"),
@@ -343,6 +387,7 @@ const els = {
   mobileToolClose: document.querySelector("#mobileToolClose"),
   mobileToolScrim: document.querySelector("#mobileToolScrim"),
   chooseBankModeBtn: document.querySelector("#chooseBankModeBtn"),
+  quickRandomModeBtn: document.querySelector("#quickRandomModeBtn"),
   autoAskModeBtn: document.querySelector("#autoAskModeBtn"),
   dailyModeBtn: document.querySelector("#dailyModeBtn"),
   dailyModeStatus: document.querySelector("#dailyModeStatus"),
@@ -1034,7 +1079,13 @@ function observeHistoryLoadMore(element) {
 async function loadGameHistory() {
   try {
     const records = await api(`/api/history?mode=${encodeURIComponent(state.historyMode)}`);
-    state.gameHistory = records.filter((record) => (record.mode || "normal") === state.historyMode);
+    const localRecords = readGuestHistory();
+    const merged = [...records, ...localRecords].filter((record, index, all) =>
+      all.findIndex((item) => historyRecordKey(item) === historyRecordKey(record)) === index
+    );
+    state.gameHistory = merged
+      .filter((record) => (record.mode || "normal") === state.historyMode)
+      .sort((a, b) => new Date(b.endedAt || 0) - new Date(a.endedAt || 0));
     state.activeHistoryRecord = null;
     state.gameHistoryVisibleCount = 10;
     renderGameHistory();
@@ -1892,6 +1943,7 @@ async function startNewGame(categories, mode = state.pendingGameMode || "normal"
     method: "POST",
     body: JSON.stringify({ categories })
   });
+  window.NanachiGameShell?.record("core_start", "guess");
   localStorage.setItem("guess-word-game-id", state.game.id);
   state.activeGameMode = mode === "auto" ? "auto" : "normal";
   state.autoQuestionDeck = state.activeGameMode === "auto" ? shuffledAskQuestions() : [];
@@ -1905,6 +1957,7 @@ async function startNewGame(categories, mode = state.pendingGameMode || "normal"
 async function startDailyGame() {
   setMessage("正在载入今日题目...");
   state.game = await api("/api/daily/game", { method: "POST" });
+  window.NanachiGameShell?.record("core_start", "guess");
   localStorage.setItem("guess-word-game-id", state.game.id);
   state.activeGameMode = "daily";
   state.autoQuestionDeck = [];
@@ -2051,6 +2104,8 @@ async function revealAnswer() {
       method: "POST",
       body: JSON.stringify({ gameId: state.game.id })
     });
+    rememberFinishedGame(state.game);
+    window.NanachiGameShell?.record("core_complete", "guess", { success: false });
     localStorage.setItem("guess-word-game-id", state.game.id);
     setMessage("");
     renderGame();
@@ -2160,8 +2215,10 @@ async function submitFinalGuess(event) {
       delay(1100)
     ]);
     state.game = game;
+    rememberFinishedGame(state.game);
     localStorage.setItem("guess-word-game-id", state.game.id);
     const latest = state.game.history.at(-1);
+    if (latest?.correct) window.NanachiGameShell?.record("core_complete", "guess", { success: true });
     renderGame();
     renderFinalGuessResult(Boolean(latest?.correct));
     if (state.game.mode === "daily" && latest?.correct) void loadDailyStatus();
@@ -2177,6 +2234,10 @@ async function submitFinalGuess(event) {
     els.finalGuessSubmitBtn.textContent = "提交最终答案";
   }
 }
+
+window.addEventListener("nanachi-authenticated", () => {
+  void mergeGuestHistoryIntoAccount().then(loadGameHistory).catch(() => undefined);
+});
 
 function openCategoryModal() {
   els.categoryModalForm.reset();
@@ -2658,6 +2719,21 @@ els.chooseBankModeBtn.addEventListener("click", () => {
   state.pendingGameMode = "normal";
   setGameStage("category");
 });
+els.quickRandomModeBtn.addEventListener("click", async () => {
+  const categories = Object.keys(state.wordbank);
+  if (!categories.length) {
+    showToast("词库还在加载，请稍后再试。", true);
+    return;
+  }
+  const category = categories[Math.floor(Math.random() * categories.length)];
+  state.selectedCategories = new Set([category]);
+  state.pendingGameMode = "normal";
+  try {
+    await startNewGame([category], "normal");
+  } catch (error) {
+    showToast(error.message, true);
+  }
+});
 els.autoAskModeBtn.addEventListener("click", () => {
   state.pendingGameMode = "auto";
   setGameStage("category");
@@ -2790,6 +2866,7 @@ await loadWordbank();
 await loadDailyStatus();
 renderLibrary();
 setGameStage("mode");
+document.body.classList.remove("app-loading");
 
 try {
   const shareId = new URLSearchParams(window.location.search).get("share");

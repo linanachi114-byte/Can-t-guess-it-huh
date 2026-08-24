@@ -3,14 +3,26 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>猜不到吧</title>
+    <title>猜不到吧｜向 AI 逼问隐藏答案</title>
+    <meta name="description" content="AI 藏好一个答案，你只能靠是非问题逐步缩小范围。每天还有一道所有玩家相同的谜题。" />
+    <link rel="canonical" href="https://guess.lijiaqi.me/" />
+    <meta property="og:type" content="website"><meta property="og:title" content="猜不到吧"><meta property="og:description" content="AI 藏好了答案。你能用几个问题把它逼出来？"><meta property="og:url" content="https://guess.lijiaqi.me/"><meta property="og:image" content="https://guess.lijiaqi.me/images/app-logo.webp">
+    <meta name="twitter:card" content="summary_large_image">
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"Game","name":"猜不到吧","url":"https://guess.lijiaqi.me/","description":"AI 是非问答猜词游戏","applicationCategory":"Game"}</script>
     <link rel="stylesheet" href="/styles.css">
   </head>
-  <body>
+  <body class="app-loading">
+    <div id="initialLoader" class="initial-loader" role="status" aria-live="polite">
+      <div class="loader-logo-skeleton"></div>
+      <div class="loader-line wide"></div>
+      <div class="loader-line"></div>
+      <div class="loader-card-grid"><i></i><i></i><i></i></div>
+      <strong>正在把题库洗牌...</strong>
+    </div>
     <main class="shell">
       <header class="app-header">
         <div class="brand-lockup">
-          <img class="app-logo" src="/images/app-logo.png" alt="" aria-hidden="true">
+          <img class="app-logo" src="/images/app-logo.webp" alt="" aria-hidden="true" width="768" height="768">
           <div>
             <p class="eyebrow">AI 猜词游戏</p>
             <h1>猜不到吧</h1>
@@ -52,8 +64,13 @@
           <section id="gameModePanel" class="game-stage">
             <div class="stage-heading">
               <p class="eyebrow">开始猜词</p>
-              <h2>选择一个模式</h2>
+              <h2>AI 藏好了一个答案</h2>
+              <p>先来一局，靠提问把它逼到墙角。</p>
             </div>
+            <button id="quickRandomModeBtn" class="quick-random-mode" type="button">
+              <strong>立即随机开一局</strong>
+              <span>从全部词库抽题，马上开始提问 →</span>
+            </button>
             <div class="mode-choice-grid">
               <button id="chooseBankModeBtn" class="mode-choice-card" type="button">
                 <svg aria-hidden="true" class="mode-choice-icon mode-choice-icon-bank" viewBox="0 0 64 64">
@@ -98,7 +115,7 @@
                 </svg>
                 <span class="mode-choice-copy">
                   <strong>每日一题</strong>
-                  <span>每天固定一道题，所有登录用户挑战同一答案。</span>
+                  <span>每天固定一道题，所有玩家挑战同一答案。</span>
                 </span>
               </button>
             </div>
@@ -493,6 +510,7 @@
       <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
     </main>
 
+    <script src="/nanachi-game-shell.js"></script>
     <script src="/nanachi-auth.js"></script>
     <script src="/app.js" type="module"></script>
   </body>

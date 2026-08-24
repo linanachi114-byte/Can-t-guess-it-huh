@@ -180,6 +180,7 @@ async function writeWordBankToDb(bank) {
 }
 
 async function readGameHistoryFromDb(userId = null, mode = "") {
+  if (!userId) return [];
   const conditions = [];
   const values = [];
   if (userId) {
@@ -985,6 +986,24 @@ async function handleApi(req, res) {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/history/import") {
+    const user = await currentUser(req);
+    if (!user?.id) {
+      sendJson(res, 401, { error: "登录后才能同步游客记录。" });
+      return;
+    }
+    const body = await parseBody(req);
+    const ids = [...new Set((Array.isArray(body.ids) ? body.ids : []).map(String).filter(Boolean))].slice(0, 100);
+    if (ids.length) {
+      await pool.query(
+        "update guess_game_history set user_id = $1 where user_id is null and id = any($2::text[])",
+        [user.id, ids],
+      );
+    }
+    sendJson(res, 200, { imported: ids.length });
+    return;
+  }
+
   if (req.method === "GET" && url.pathname === "/api/daily/status") {
     const user = await currentUser(req);
     const daily = await dailyChallengeFor();
@@ -1004,15 +1023,11 @@ async function handleApi(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/daily/game") {
     const user = await currentUser(req);
-    if (!user) {
-      sendJson(res, 401, { error: "请先登录后再进入每日一题。" });
-      return;
-    }
     const daily = await dailyChallengeFor();
     sendJson(res, 200, createGameFromEntry(daily.category, daily.entry, {
       mode: "daily",
       dailyDate: daily.day,
-      userId: user.id
+      userId: user?.id || null
     }));
     return;
   }
