@@ -189,6 +189,13 @@ h2 {
   font-size: 22px;
 }
 
+.stage-heading .stage-tagline {
+  color: var(--accent-dark);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .mode-choice-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2527,7 +2534,16 @@ button:disabled {
   .entry-row {
     grid-template-columns: 104px minmax(0, 1fr);
     gap: 12px;
-    padding: 14px 126px 14px 14px;
+    padding: 14px;
+  }
+
+  .entry-summary-title {
+    padding-right: 110px;
+  }
+
+  .entry-summary-clues span {
+    width: 100%;
+    max-width: none;
   }
 
   .status-strip {
