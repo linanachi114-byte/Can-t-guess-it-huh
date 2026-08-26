@@ -126,7 +126,8 @@
     style.textContent = `
       .nanachi-auth-gate{position:fixed;inset:0;z-index:9997;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(66,47,27,.58);backdrop-filter:blur(12px);font-family:inherit}
       .nanachi-auth-gate.show{display:flex}
-      .nanachi-auth-panel{width:min(420px,100%);border-radius:28px;border:1px solid rgba(136,96,45,.2);background:#fff8ec;box-shadow:0 28px 80px rgba(82,54,25,.34);padding:22px;color:#2d2318}
+      .nanachi-auth-panel{position:relative;width:min(420px,100%);border-radius:28px;border:1px solid rgba(136,96,45,.2);background:#fff8ec;box-shadow:0 28px 80px rgba(82,54,25,.34);padding:22px;color:#2d2318}
+      .nanachi-auth-close{position:absolute;right:13px;top:13px;width:38px;height:38px;border:1px solid rgba(136,96,45,.28);border-radius:12px;display:grid;place-items:center;background:#fffdf8;color:inherit;font:inherit;font-size:26px;font-weight:900;line-height:1;cursor:pointer}
       .nanachi-auth-head{display:flex;gap:14px;align-items:center;margin-bottom:18px}
       .nanachi-auth-mark{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:#fffaf2;box-shadow:0 10px 24px rgba(82,54,25,.16);overflow:hidden}
       .nanachi-auth-mark img{width:100%;height:100%;display:block;object-fit:cover}
@@ -165,6 +166,7 @@
     gate.dataset.mode = "login";
     gate.innerHTML = `
       <section class="nanachi-auth-panel" role="dialog" aria-modal="true" aria-labelledby="nanachi-auth-title">
+        <button type="button" class="nanachi-auth-close" aria-label="返回游戏" title="返回游戏">×</button>
         <div class="nanachi-auth-head">
           <div class="nanachi-auth-mark"><img src="/nanachi-project-logo.png" alt="猜不到吧" /></div>
           <div>
@@ -190,6 +192,7 @@
       </section>
     `;
     document.body.appendChild(gate);
+    gate.querySelector(".nanachi-auth-close")?.addEventListener("click", hideAuthGate);
 
     const title = gate.querySelector("#nanachi-auth-title");
     const form = gate.querySelector(".nanachi-auth-form");
