@@ -264,6 +264,8 @@ const state = {
   autoQuestionDeck: [],
   autoQuestionIndex: 0,
   wordbank: {},
+  wordbankLoaded: false,
+  categorySummary: {},
   categoryCovers: {},
   favorites: [],
   gameHistory: [],
@@ -1499,7 +1501,7 @@ async function shareCurrentGame() {
 }
 
 function renderCategoryPicker() {
-  const categories = Object.keys(state.wordbank);
+  const categories = state.wordbankLoaded ? Object.keys(state.wordbank) : Object.keys(state.categorySummary);
   const validCategories = new Set(categories);
   state.selectedCategories.forEach((category) => {
     if (!validCategories.has(category)) state.selectedCategories.delete(category);
@@ -1513,7 +1515,7 @@ function renderCategoryPicker() {
 
   els.categoryList.innerHTML = "";
   categories.forEach((category) => {
-    const entries = state.wordbank[category] || [];
+    const entryCount = state.wordbankLoaded ? (state.wordbank[category] || []).length : (state.categorySummary[category] || 0);
     const row = document.createElement("button");
     row.type = "button";
     row.className = "category-row";
@@ -1536,7 +1538,7 @@ function renderCategoryPicker() {
     const name = document.createElement("span");
     name.textContent = category;
     const count = document.createElement("small");
-    count.textContent = `含 ${entries.length} 个词条`;
+    count.textContent = `含 ${entryCount} 个词条`;
     row.append(name, count);
     els.categoryList.append(row);
   });
@@ -1544,14 +1546,14 @@ function renderCategoryPicker() {
 }
 
 function updateCategoryActions() {
-  const total = Object.keys(state.wordbank).length;
+  const total = state.wordbankLoaded ? Object.keys(state.wordbank).length : Object.keys(state.categorySummary).length;
   const selected = state.selectedCategories.size;
   els.startSelectedGameBtn.disabled = selected === 0;
   els.randomCategoryBtn.disabled = total === 0;
 }
 
 function selectRandomCategory() {
-  const categories = Object.keys(state.wordbank);
+  const categories = state.wordbankLoaded ? Object.keys(state.wordbank) : Object.keys(state.categorySummary);
   if (!categories.length) return;
   const randomCategory = categories[Math.floor(Math.random() * categories.length)];
   state.selectedCategories = new Set([randomCategory]);
@@ -1941,12 +1943,18 @@ function renderClueItems(container, category, entryIndex, wordInput, imageInput,
 
 async function loadWordbank() {
   state.wordbank = await api("/api/wordbank");
+  state.wordbankLoaded = true;
   try {
     const response = await fetch("/images/category-covers/index.json");
     state.categoryCovers = response.ok ? await response.json() : {};
   } catch {
     state.categoryCovers = {};
   }
+  renderCategoryPicker();
+}
+
+async function loadWordbankSummary() {
+  state.categorySummary = await api("/api/wordbank/summary");
   renderCategoryPicker();
 }
 
@@ -1964,6 +1972,8 @@ async function loadDailyStatus() {
 
 async function refreshWordbank(bank) {
   state.wordbank = bank || await api("/api/wordbank");
+  state.wordbankLoaded = true;
+  state.categorySummary = Object.fromEntries(Object.entries(state.wordbank).map(([category, entries]) => [category, entries.length]));
   renderCategoryPicker();
   renderLibrary();
 }
@@ -2752,7 +2762,18 @@ async function regenerateClues(category, index, word, button) {
 }
 
 els.gameNavBtn.addEventListener("click", goGameHome);
-els.libraryNavBtn.addEventListener("click", () => setView("library"));
+els.libraryNavBtn.addEventListener("click", async () => {
+  setView("library");
+  if (state.wordbankLoaded) return;
+  els.libraryCards.innerHTML = '<p class="library-loading">正在打开词库…</p>';
+  try {
+    await loadWordbank();
+    renderLibrary();
+  } catch (error) {
+    els.libraryCards.innerHTML = '';
+    setLibraryMessage(error.message || "词库加载失败。", true);
+  }
+});
 els.historyNavBtn.addEventListener("click", () => {
   if (window.NanachiAuth?.isLoggedIn?.()) {
     setView("history");
@@ -2907,11 +2928,10 @@ MOBILE_QUERY.addEventListener("change", applyLibraryCardMode);
 
 refreshMainInputPlaceholder();
 loadFavorites();
-await loadWordbank();
-await loadDailyStatus();
-renderLibrary();
+await loadWordbankSummary();
 setGameStage("mode");
 document.body.classList.remove("app-loading");
+void loadDailyStatus();
 
 try {
   const shareId = new URLSearchParams(window.location.search).get("share");

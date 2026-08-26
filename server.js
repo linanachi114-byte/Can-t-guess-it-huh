@@ -277,6 +277,17 @@ async function readWordBank() {
   return readWordBankFromDb();
 }
 
+async function readWordBankSummary() {
+  const result = await pool.query(
+    `select c.name as category, count(e.id)::int as count
+     from guess_categories c
+     left join guess_entries e on e.category = c.name
+     group by c.name, c.sort_order
+     order by c.sort_order asc, c.name asc`,
+  );
+  return Object.fromEntries(result.rows.map((row) => [row.category, Number(row.count) || 0]));
+}
+
 async function writeWordBank(bank) {
   await writeWordBankToDb(bank);
 }
@@ -977,6 +988,11 @@ async function handleApi(req, res) {
 
   if (req.method === "GET" && url.pathname === "/api/wordbank") {
     sendJson(res, 200, await readWordBank());
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/wordbank/summary") {
+    sendJson(res, 200, await readWordBankSummary());
     return;
   }
 

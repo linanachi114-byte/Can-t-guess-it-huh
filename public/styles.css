@@ -69,6 +69,13 @@ button {
 .loader-logo-skeleton,.loader-line,.loader-card-grid i{display:block;border-radius:14px;background:linear-gradient(100deg,#e4e7e0 20%,#f6f7f3 38%,#e4e7e0 58%);background-size:200% 100%;animation:guess-skeleton 1.1s linear infinite}
 .loader-logo-skeleton{width:72px;height:72px;border-radius:22px}.loader-line{width:62%;height:18px}.loader-line.wide{width:86%;height:30px}.loader-card-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.loader-card-grid i{height:92px}.initial-loader strong{text-align:center;margin-top:6px}
 body:not(.app-loading) .initial-loader{display:none}
+
+.library-loading {
+  margin: 24px 0;
+  color: var(--muted);
+  font-weight: 800;
+  text-align: center;
+}
 @keyframes guess-skeleton{to{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){.loader-logo-skeleton,.loader-line,.loader-card-grid i{animation:none}}
 
