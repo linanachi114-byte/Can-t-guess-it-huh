@@ -2237,6 +2237,7 @@ async function submitFinalGuess(event) {
 
 window.addEventListener("nanachi-authenticated", () => {
   void mergeGuestHistoryIntoAccount().then(loadGameHistory).catch(() => undefined);
+  if (window.NanachiAuth?.consumeProfileLogin?.()) setView("history");
 });
 
 function openCategoryModal() {
@@ -2714,7 +2715,13 @@ async function regenerateClues(category, index, word, button) {
 
 els.gameNavBtn.addEventListener("click", goGameHome);
 els.libraryNavBtn.addEventListener("click", () => setView("library"));
-els.historyNavBtn.addEventListener("click", () => setView("history"));
+els.historyNavBtn.addEventListener("click", () => {
+  if (window.NanachiAuth?.isLoggedIn?.()) {
+    setView("history");
+    return;
+  }
+  window.NanachiAuth?.openProfileLogin?.();
+});
 els.chooseBankModeBtn.addEventListener("click", () => {
   state.pendingGameMode = "normal";
   setGameStage("category");

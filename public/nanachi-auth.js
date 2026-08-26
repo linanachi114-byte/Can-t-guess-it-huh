@@ -157,6 +157,14 @@
       .nanachi-auth-send-sms{border:0;border-radius:15px;background:#db8f2f;color:#fffaf2;font:inherit;font-size:13px;font-weight:900;cursor:pointer}
       .nanachi-auth-send-sms:disabled{opacity:.58;cursor:not-allowed}
       .nanachi-auth-note{min-height:20px;color:#8f681f;font-size:13px;font-weight:800}
+      .nanachi-auth-gate.profile-auth{align-items:stretch;padding:14px;background:#f5f0e4}
+      .nanachi-auth-gate.profile-auth .nanachi-auth-panel{width:min(760px,100%);margin:auto;padding:48px;border-radius:26px;background:#fffaf0;box-shadow:0 18px 44px rgba(82,54,25,.12)}
+      .nanachi-auth-gate.profile-auth .nanachi-auth-close{left:20px;right:auto;top:20px;font-size:0}
+      .nanachi-auth-gate.profile-auth .nanachi-auth-close::before{content:"←";font-size:26px}
+      .nanachi-auth-gate.profile-auth .nanachi-auth-head{display:grid;justify-items:center;text-align:center;gap:10px;margin:10px 0 24px}
+      .nanachi-auth-gate.profile-auth .nanachi-auth-head>div:last-child{display:grid;gap:4px}
+      .nanachi-auth-gate.profile-auth .nanachi-auth-mark{width:68px;height:68px}
+      .nanachi-auth-gate.profile-auth .nanachi-auth-head p{max-width:360px}
     `;
     document.head.appendChild(style);
 
@@ -312,42 +320,26 @@
     });
   }
 
-  function showAuthGate() {
+  let profileLoginOpen = false;
+
+  function showAuthGate(profile = false) {
     installAuthGate();
-    document.getElementById("nanachi-auth-gate")?.classList.add("show");
+    profileLoginOpen = profile;
+    const gate = document.getElementById("nanachi-auth-gate");
+    gate?.classList.toggle("profile-auth", profile);
+    gate?.classList.add("show");
   }
 
   function hideAuthGate() {
-    document.getElementById("nanachi-auth-gate")?.classList.remove("show");
+    const gate = document.getElementById("nanachi-auth-gate");
+    gate?.classList.remove("show", "profile-auth");
   }
 
   function isAuthGateVisible() {
     return Boolean(document.getElementById("nanachi-auth-gate")?.classList.contains("show"));
   }
 
-  function installGuestLoginHint() {
-    if (document.getElementById("nanachi-login-hint")) return;
-    const style = document.createElement("style");
-    style.textContent = `
-      .nanachi-login-hint{position:fixed;right:max(10px,env(safe-area-inset-right,0px));top:max(10px,env(safe-area-inset-top,0px));z-index:9996;border:1px solid rgba(255,255,255,.3);border-radius:14px;width:44px;height:44px;padding:0;background:rgba(18,24,20,.88);color:#fff;font:inherit;font-size:13px;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.26);backdrop-filter:blur(10px);cursor:pointer}
-      .nanachi-login-hint[hidden]{display:none}
-    `;
-    document.head.appendChild(style);
-    const button = document.createElement("button");
-    button.id = "nanachi-login-hint";
-    button.className = "nanachi-login-hint";
-    button.type = "button";
-    button.textContent = "登录";
-    button.setAttribute("aria-label", "登录后同步进度");
-    button.title = "登录后同步进度";
-    button.addEventListener("click", showAuthGate);
-    document.body.appendChild(button);
-  }
-
-  function updateGuestLoginHint() {
-    const hint = document.getElementById("nanachi-login-hint");
-    if (hint) hint.hidden = Boolean(currentUser);
-  }
+  function updateGuestLoginHint() {}
   async function bootstrapAuth() {
     installAuthGate();
     try {
@@ -462,8 +454,7 @@
   function start() {
     window.NanachiGameShell?.record("project_open", PROJECT_ID);
     installGameCenterBackGuard();
-    installGuestLoginHint();
-    updateGuestLoginHint();    void bootstrapAuth();
+    void bootstrapAuth();
   }
 
   document.addEventListener("visibilitychange", () => {
@@ -471,6 +462,16 @@
   });
   window.addEventListener("pagehide", endTracking);
   window.addEventListener("beforeunload", endTracking);
+  window.NanachiAuth = {
+    isLoggedIn: () => Boolean(currentUser),
+    openProfileLogin: () => showAuthGate(true),
+    consumeProfileLogin: () => {
+      const shouldOpenProfile = profileLoginOpen;
+      profileLoginOpen = false;
+      return shouldOpenProfile;
+    },
+  };
+
   if (document.body) {
     start();
   } else {
