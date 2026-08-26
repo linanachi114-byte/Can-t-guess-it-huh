@@ -465,6 +465,10 @@
   window.NanachiAuth = {
     isLoggedIn: () => Boolean(currentUser),
     openProfileLogin: () => showAuthGate(true),
+    returnToLauncher: () => {
+      endTracking();
+      window.location.href = launcherUrl();
+    },
     consumeProfileLogin: () => {
       const shouldOpenProfile = profileLoginOpen;
       profileLoginOpen = false;

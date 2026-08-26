@@ -260,6 +260,7 @@ const state = {
   game: null,
   pendingGameMode: "normal",
   activeGameMode: "normal",
+  gameEntrySource: "menu",
   autoQuestionDeck: [],
   autoQuestionIndex: 0,
   wordbank: {},
@@ -389,6 +390,7 @@ const els = {
   chooseBankModeBtn: document.querySelector("#chooseBankModeBtn"),
   quickRandomModeBtn: document.querySelector("#quickRandomModeBtn"),
   autoAskModeBtn: document.querySelector("#autoAskModeBtn"),
+  returnToRoomModeBtn: document.querySelector("#returnToRoomModeBtn"),
   dailyModeBtn: document.querySelector("#dailyModeBtn"),
   dailyModeStatus: document.querySelector("#dailyModeStatus"),
   normalHistoryTab: document.querySelector("#normalHistoryTab"),
@@ -664,6 +666,7 @@ function goGameHome() {
   state.game = null;
   state.pendingGameMode = "normal";
   state.activeGameMode = "normal";
+  state.gameEntrySource = "menu";
   state.autoQuestionDeck = [];
   state.autoQuestionIndex = 0;
   localStorage.removeItem("guess-word-game-id");
@@ -695,6 +698,39 @@ function setGameStage(stage) {
   if (stage !== "play") setPlayToolboxOpen(false);
   if (stage === "category") renderCategoryPicker();
   if (stage === "play") renderGame();
+}
+
+function returnToRoom() {
+  if (window.NanachiAuth?.returnToLauncher) {
+    window.NanachiAuth.returnToLauncher();
+    return;
+  }
+  window.location.href = "https://lijiaqi.me";
+}
+
+async function leaveCurrentGame() {
+  const returnToCategory = state.gameEntrySource === "category";
+  const confirmed = await askConfirm({
+    title: returnToCategory ? "是否返回词库选择界面？" : "是否返回主菜单？",
+    text: "你的进度将不会保存。",
+    okText: "确认返回",
+  });
+  if (!confirmed) return;
+
+  state.game = null;
+  state.autoQuestionDeck = [];
+  state.autoQuestionIndex = 0;
+  localStorage.removeItem("guess-word-game-id");
+  setMessage("");
+  refreshMainInputPlaceholder();
+
+  if (returnToCategory) {
+    state.pendingGameMode = "normal";
+    state.activeGameMode = "normal";
+    setGameStage("category");
+    return;
+  }
+  goGameHome();
 }
 
 function returnToCategoryPicker() {
@@ -1932,7 +1968,7 @@ async function refreshWordbank(bank) {
   renderLibrary();
 }
 
-async function startNewGame(categories, mode = state.pendingGameMode || "normal") {
+async function startNewGame(categories, mode = state.pendingGameMode || "normal", entrySource = "category") {
   if (!categories.length) {
     showToast("请先选择词库。", true);
     setGameStage("category");
@@ -1946,6 +1982,7 @@ async function startNewGame(categories, mode = state.pendingGameMode || "normal"
   window.NanachiGameShell?.record("core_start", "guess");
   localStorage.setItem("guess-word-game-id", state.game.id);
   state.activeGameMode = mode === "auto" ? "auto" : "normal";
+  state.gameEntrySource = entrySource;
   state.autoQuestionDeck = state.activeGameMode === "auto" ? shuffledAskQuestions() : [];
   state.autoQuestionIndex = 0;
   setMessage("");
@@ -1960,6 +1997,7 @@ async function startDailyGame() {
   window.NanachiGameShell?.record("core_start", "guess");
   localStorage.setItem("guess-word-game-id", state.game.id);
   state.activeGameMode = "daily";
+  state.gameEntrySource = "daily";
   state.autoQuestionDeck = [];
   state.autoQuestionIndex = 0;
   setMessage("");
@@ -2736,14 +2774,13 @@ els.quickRandomModeBtn.addEventListener("click", async () => {
   state.selectedCategories = new Set([category]);
   state.pendingGameMode = "normal";
   try {
-    await startNewGame([category], "normal");
+    await startNewGame([category], "normal", "quick");
   } catch (error) {
     showToast(error.message, true);
   }
 });
 els.autoAskModeBtn.addEventListener("click", () => {
-  state.pendingGameMode = "auto";
-  setGameStage("category");
+  showToast("该玩法暂未开放，敬请期待。");
 });
 els.dailyModeBtn.addEventListener("click", async () => {
   try {
@@ -2788,7 +2825,8 @@ els.finalGuessModal.addEventListener("click", (event) => {
 els.clueBtn.addEventListener("click", showClue);
 els.revealBtn.addEventListener("click", revealAnswer);
 els.shareBtn.addEventListener("click", shareCurrentGame);
-els.backToCategoryBtn.addEventListener("click", returnToCategoryPicker);
+els.returnToRoomModeBtn.addEventListener("click", returnToRoom);
+els.backToCategoryBtn.addEventListener("click", () => void leaveCurrentGame());
 els.mobileToolToggle?.addEventListener("click", () => setPlayToolboxOpen(true));
 els.mobileToolClose?.addEventListener("click", () => setPlayToolboxOpen(false));
 els.mobileToolScrim?.addEventListener("click", () => setPlayToolboxOpen(false));

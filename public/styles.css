@@ -203,13 +203,15 @@ h2 {
 }
 
 .quick-random-mode {
+  position: relative;
+  overflow: hidden;
   width: 100%;
-  min-height: 92px;
+  min-height: 132px;
   display: grid;
   align-content: center;
   gap: 5px;
   margin-bottom: 14px;
-  padding: 17px 20px;
+  padding: 22px 140px 22px 24px;
   border: 0;
   border-radius: 18px;
   color: #fff;
@@ -217,6 +219,24 @@ h2 {
   text-align: left;
   box-shadow: 0 12px 28px rgba(21, 93, 79, .2);
   cursor: pointer;
+}
+
+.quick-random-mode > strong,
+.quick-random-mode > span {
+  position: relative;
+  z-index: 1;
+}
+
+.quick-random-mode > img {
+  width: 112px;
+  height: 112px;
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  opacity: .24;
+  filter: saturate(.78) brightness(1.35);
+  pointer-events: none;
 }
 
 .quick-random-mode:hover,
@@ -311,7 +331,24 @@ h2 {
 }
 
 .mode-choice-card.disabled {
-  opacity: 0.72;
+  opacity: 0.58;
+  cursor: pointer;
+  filter: grayscale(.45);
+}
+
+.mode-choice-card.disabled:hover,
+.mode-choice-card.disabled:focus-visible {
+  border-color: var(--line);
+  box-shadow: none;
+  transform: none;
+}
+
+.main-room-return {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 2px;
+}
+
 }
 
 .stage-actions {
@@ -2909,4 +2946,89 @@ button:disabled {
     padding: 12px 40px 12px 12px;
   }
 
+}
+
+/* Keep the desktop guessing round in the same focused, vertical rhythm as mobile. */
+@media (min-width: 921px) {
+  .play-sidebar-layout {
+    grid-template-columns: minmax(0, 720px);
+    justify-content: center;
+  }
+
+  .play-toolbox {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 56;
+    width: min(340px, 88vw);
+    align-content: start;
+    padding: 16px;
+    overflow-y: auto;
+    border-left: 1px solid #decfb9;
+    background: #fffaf2;
+    box-shadow: -18px 0 48px rgba(23, 32, 38, .18);
+    transform: translateX(105%);
+    transition: transform .24s ease;
+  }
+
+  .play-toolbox.open {
+    transform: translateX(0);
+  }
+
+  .mobile-play-fab-group {
+    position: fixed;
+    top: 42%;
+    right: max(22px, calc(50% - 430px));
+    z-index: 54;
+    display: grid;
+    gap: 10px;
+  }
+
+  .mobile-tool-toggle,
+  .mobile-final-guess-toggle {
+    display: grid;
+    place-items: center;
+    width: 50px;
+    height: 50px;
+    min-height: 50px;
+    padding: 0;
+    border: 1px solid #f1c66f;
+    border-radius: 999px;
+    background: #fff1ba;
+    color: #8a5200;
+    box-shadow: -8px 10px 24px rgba(23, 32, 38, .16);
+  }
+
+  .mobile-final-guess-toggle {
+    border-color: #ffb8b0;
+    background: #b92720;
+    color: #fff;
+  }
+
+  .mobile-tool-toggle svg,
+  .mobile-final-guess-toggle svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .mobile-tool-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(23, 32, 38, .32);
+  }
+
+  .mobile-tool-scrim.show {
+    display: block;
+  }
+
+  .toolbox-mobile-head {
+    display: flex;
+  }
 }
