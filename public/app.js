@@ -2786,18 +2786,24 @@ els.chooseBankModeBtn.addEventListener("click", () => {
   setGameStage("category");
 });
 els.quickRandomModeBtn.addEventListener("click", async () => {
-  const categories = Object.keys(state.wordbank);
-  if (!categories.length) {
-    showToast("词库还在加载，请稍后再试。", true);
-    return;
-  }
-  const category = categories[Math.floor(Math.random() * categories.length)];
-  state.selectedCategories = new Set([category]);
-  state.pendingGameMode = "normal";
+  if (els.quickRandomModeBtn.disabled) return;
+  els.quickRandomModeBtn.disabled = true;
   try {
+    let categories = state.wordbankLoaded ? Object.keys(state.wordbank) : Object.keys(state.categorySummary);
+    if (!categories.length) {
+      await loadWordbankSummary();
+      categories = Object.keys(state.categorySummary);
+    }
+    if (!categories.length) throw new Error("词库暂时不可用，请稍后再试。");
+
+    const category = categories[Math.floor(Math.random() * categories.length)];
+    state.selectedCategories = new Set([category]);
+    state.pendingGameMode = "normal";
     await startNewGame([category], "normal", "quick");
   } catch (error) {
     showToast(error.message, true);
+  } finally {
+    els.quickRandomModeBtn.disabled = false;
   }
 });
 els.autoAskModeBtn.addEventListener("click", () => {
