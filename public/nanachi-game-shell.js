@@ -13,7 +13,7 @@
   function visitorId() {
     let value = localStorage.getItem(VISITOR_KEY);
     if (!value) {
-      value = crypto.randomUUID();
+      value = globalThis.crypto?.randomUUID?.() || `visitor-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
       localStorage.setItem(VISITOR_KEY, value);
     }
     return value;
