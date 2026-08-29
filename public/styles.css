@@ -350,10 +350,22 @@ h2 {
   transform: none;
 }
 
-.main-room-return {
-  width: 44px;
-  height: 44px;
-  margin-bottom: 2px;
+.room-return-card {
+  border-color: #efc3c0;
+  background: #fff8f7;
+}
+
+.room-return-card .room-return-icon,
+.room-return-card strong,
+.room-return-card span {
+  color: #c83f3a;
+  stroke: #c83f3a;
+}
+
+.room-return-card:hover,
+.room-return-card:focus-visible {
+  border-color: #c83f3a;
+  box-shadow: 0 8px 22px rgba(200, 63, 58, 0.12);
 }
 
 }

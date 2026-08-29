@@ -64,7 +64,6 @@
         <section class="game">
           <section id="gameModePanel" class="game-stage">
             <div class="stage-heading">
-              <button id="returnToRoomModeBtn" class="back-button main-room-return" type="button" title="返回房间" aria-label="返回房间">←</button>
               <h2 class="stage-tagline">AI藏起了一个词，靠提问推出它！</h2>
             </div>
             <button id="quickRandomModeBtn" class="quick-random-mode" type="button">
@@ -117,6 +116,17 @@
                 <span class="mode-choice-copy">
                   <strong>连环探问</strong>
                   <span>系统预抽二十个问题，逐条替你向 AI 发问。</span>
+                </span>
+              </button>
+              <button id="returnToRoomModeBtn" class="mode-choice-card room-return-card" type="button">
+                <svg aria-hidden="true" class="mode-choice-icon room-return-icon" viewBox="0 0 64 64">
+                  <path d="M28 14H14v36h14" />
+                  <path d="M23 32h28" />
+                  <path d="m42 23 9 9-9 9" />
+                </svg>
+                <span class="mode-choice-copy">
+                  <strong>返回房间</strong>
+                  <span>回到作品入口房间，继续探索其他游戏。</span>
                 </span>
               </button>
             </div>

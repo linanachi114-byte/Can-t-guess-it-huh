@@ -453,7 +453,6 @@
 
   function start() {
     window.NanachiGameShell?.record("project_open", PROJECT_ID);
-    installGameCenterBackGuard();
     void bootstrapAuth();
   }
 
