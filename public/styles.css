@@ -1009,6 +1009,76 @@ button:disabled {
   color: var(--danger);
 }
 
+.favorite-login-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(24, 38, 42, 0.28);
+  backdrop-filter: blur(7px);
+}
+
+.favorite-login-dialog.hidden {
+  display: none;
+}
+
+.favorite-login-card {
+  width: min(420px, 100%);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid #d4e2dc;
+  border-radius: 18px;
+  background: #fffdf8;
+  box-shadow: 0 22px 54px rgba(32, 69, 64, 0.2);
+}
+
+.favorite-login-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  background: #e5f4ee;
+  color: #13745f;
+  font-size: 25px;
+}
+
+.favorite-login-card h2 {
+  margin: 1px 0 4px;
+  color: #16362d;
+  font-size: 20px;
+}
+
+.favorite-login-card p {
+  margin: 0;
+  color: #697b75;
+  line-height: 1.55;
+}
+
+.favorite-login-actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.favorite-login-actions button {
+  min-height: 44px;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 800;
+}
+
+.favorite-login-actions .primary-button {
+  border: 1px solid #14765f;
+  background: #14765f;
+  color: #fff;
+}
+
 .toast-region {
   position: fixed;
   left: 50%;

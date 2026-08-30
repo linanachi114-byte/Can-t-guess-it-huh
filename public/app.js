@@ -466,6 +466,9 @@ const els = {
   shareSteps: document.querySelector("#shareSteps"),
   nextShareStepBtn: document.querySelector("#nextShareStepBtn"),
   exitShareBtn: document.querySelector("#exitShareBtn"),
+  favoriteLoginDialog: document.querySelector("#favoriteLoginDialog"),
+  favoriteLoginCancelBtn: document.querySelector("#favoriteLoginCancelBtn"),
+  favoriteLoginConfirmBtn: document.querySelector("#favoriteLoginConfirmBtn"),
   toastRegion: document.querySelector("#toastRegion")
 };
 
@@ -504,6 +507,16 @@ function showToast(text, isError = false) {
     item.classList.add("leaving");
     window.setTimeout(() => item.remove(), 180);
   }, 2600);
+}
+
+function closeFavoriteLoginDialog() {
+  els.favoriteLoginDialog.classList.add("hidden");
+  els.favoriteLoginDialog.setAttribute("aria-hidden", "true");
+}
+
+function openFavoriteLoginDialog() {
+  els.favoriteLoginDialog.classList.remove("hidden");
+  els.favoriteLoginDialog.setAttribute("aria-hidden", "false");
 }
 
 function favoriteKey(category, word) {
@@ -558,6 +571,10 @@ function createFavoriteButton(category, word, { showInactive = true, compact = f
 }
 
 function toggleFavorite(category, word) {
+  if (!window.NanachiAuth?.isLoggedIn?.()) {
+    openFavoriteLoginDialog();
+    return false;
+  }
   const key = favoriteKey(category, word);
   const index = state.favorites.findIndex((item) => favoriteKey(item.category, item.word) === key);
   if (index >= 0) {
@@ -569,6 +586,7 @@ function toggleFavorite(category, word) {
   }
   saveFavorites();
   renderFavoriteDependentViews();
+  return true;
 }
 
 function renderFavoriteDependentViews() {
@@ -2860,6 +2878,14 @@ els.mobileToolScrim?.addEventListener("click", () => setPlayToolboxOpen(false));
 els.favoriteCurrentBtn.addEventListener("click", () => {
   if (!state.game?.category || !state.game?.revealedWord) return;
   toggleFavorite(state.game.category, state.game.revealedWord);
+});
+els.favoriteLoginCancelBtn.addEventListener("click", closeFavoriteLoginDialog);
+els.favoriteLoginConfirmBtn.addEventListener("click", () => {
+  closeFavoriteLoginDialog();
+  window.NanachiAuth?.openProfileLogin?.();
+});
+els.favoriteLoginDialog.addEventListener("click", (event) => {
+  if (event.target === els.favoriteLoginDialog) closeFavoriteLoginDialog();
 });
 els.rerollCurrentBtn.addEventListener("click", async () => {
   try {
