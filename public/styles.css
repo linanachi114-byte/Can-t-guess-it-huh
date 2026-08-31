@@ -2632,6 +2632,11 @@ button:disabled {
     align-items: center;
   }
 
+  .app-header { margin-bottom: 8px; }
+  .app-logo { width:64px; height:64px; border-radius:16px; }
+  .brand-lockup .eyebrow { margin-bottom:2px; font-size:12px; }
+  .brand-lockup h1 { font-size:clamp(32px,9vw,42px); line-height:1; }
+
   .view-layout {
     grid-template-columns: 1fr;
   }
@@ -2667,7 +2672,7 @@ button:disabled {
   }
 
   .status-strip {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, .78fr) minmax(0, .78fr);
     gap: 7px;
   }
 
@@ -2727,7 +2732,8 @@ button:disabled {
   .status-strip strong {
     min-height: 18px;
     font-size: 18px;
-    overflow-wrap: anywhere;
+    overflow-wrap:normal;
+    word-break:keep-all;
   }
 
   .prompt-input-wrap textarea {
